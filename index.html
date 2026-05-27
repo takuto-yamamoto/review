@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#2563EB">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="復習マネ">
+<title>復習マネージャー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+:root{
+  --bg:#F2F2F7;--card:#fff;
+  --blue:#2563EB;--blue-d:#1D4ED8;--blue-bg:#EFF6FF;--blue-bd:rgba(37,99,235,.15);
+  --red:#FF3B30;--green:#34C759;
+  --lbl:#000;--lbl2:rgba(60,60,67,.6);--lbl3:rgba(60,60,67,.3);
+  --sep:rgba(60,60,67,.15);--fill:rgba(118,118,128,.12);
+  --tab-h:49px;--r:14px;
+  --safe-bottom:env(safe-area-inset-bottom);
+  --safe-top:env(safe-area-inset-top);
+}
+
+/* ══ Reset / Base ══════════════════════ */
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;
+  color:var(--lbl);-webkit-font-smoothing:antialiased;
+}
+
+/* ══ App shell ═════════════════════════ */
+#app{position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* ══ Navbar ════════════════════════════ */
+.navbar{
+  background:rgba(242,242,247,.94);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--sep);
+  padding-top:var(--safe-top);
+  flex-shrink:0;z-index:50;
+}
+.nav-inner{padding:10px 20px 12px}
+.nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nav-title{
+  font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;
+  color:var(--blue);letter-spacing:-.5px;line-height:1
+}
+.nav-date{font-size:13px;color:var(--lbl2)}
+.stat-row{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:100px;
+  padding:4px 10px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;
+  color:var(--blue-d);display:flex;align-items:center;gap:4px
+}
+.chip.warn{background:#FEF2F2;border-color:rgba(255,59,48,.2);color:#B91C1C}
+
+/* ══ Panels ════════════════════════════ */
+.panels{flex:1;overflow:hidden;position:relative;min-height:0}
+
+/* B6 fix: start panels as display:none with no transform (no mid-frame flash) */
+.panel{
+  position:absolute;inset:0;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  display:none;
+  padding:16px 16px calc(28px + var(--safe-bottom));
+}
+/* Animation applied via separate classes only when transitioning */
+.panel.slide-in{
+  display:block;
+  animation:panelIn .22s cubic-bezier(.25,.46,.45,.94) both
+}
+.panel.slide-back{
+  display:block;
+  animation:panelBack .22s cubic-bezier(.25,.46,.45,.94) both
+}
+/* Visible-at-rest state (no animation) */
+.panel.visible{display:block}
+
+@keyframes panelIn{
+  from{opacity:0;transform:translateX(22px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes panelBack{
+  from{opacity:0;transform:translateX(-22px)}
+  to{opacity:1;transform:translateX(0)}
+}
+
+/* ══ Section label ═════════════════════ */
+.sec{
+  font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--lbl3);padding:0 4px;margin:22px 0 8px
+}
+.sec.sec-first{margin-top:2px}
+
+/* ══ Hero card ═════════════════════════ */
+.hero{
+  background:linear-gradient(145deg,#1a3faa,var(--blue) 55%,#60A5FA);
+  border-radius:var(--r);padding:20px 20px 22px;margin-bottom:14px;
+  position:relative;overflow:hidden
+}
+.hero::before,.hero::after{content:'';position:absolute;border-radius:50%;pointer-events:none}
+.hero::before{width:180px;height:180px;top:-60px;right:-50px;background:rgba(255,255,255,.07)}
+.hero::after{width:100px;height:100px;bottom:-30px;left:16px;background:rgba(255,255,255,.04)}
+.hero-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;position:relative;z-index:1
+}
+.hero-eyebrow{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.hero-badge{
+  background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.2);border-radius:100px;
+  padding:3px 12px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;color:#fff
+}
+.hero-icon{
+  width:44px;height:44px;background:rgba(255,255,255,.15);border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:12px;position:relative;z-index:1
+}
+.hero-msg{font-size:21px;font-weight:700;color:#fff;position:relative;z-index:1;line-height:1.2}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.65);margin-top:4px;position:relative;z-index:1}
+
+/* ══ Card wrap (swipe container) ══════ */
+.cw{
+  position:relative;border-radius:var(--r);margin-bottom:10px;
+  overflow:hidden;isolation:isolate;
+}
+/* B3 fix: only animate cards marked as new, not on every render */
+.cw.new-card{animation:fadeInUp .2s ease both}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.swipe-bg{
+  position:absolute;right:0;top:0;bottom:0;width:80px;
+  background:var(--red);z-index:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  cursor:pointer
+}
+.swipe-bg-lbl{color:#fff;font-size:11px;font-weight:600;pointer-events:none}
+
+/* ══ Card ══════════════════════════════ */
+.card{
+  background:var(--card);border-radius:var(--r);padding:14px 16px;
+  position:relative;z-index:1;
+  will-change:transform;
+  transition:transform .22s cubic-bezier(.25,.46,.45,.94)
+}
+.card.over{border-left:3px solid var(--red);padding-left:13px}
+.card.due{border-left:3px solid var(--blue);padding-left:13px}
+@keyframes flashGreen{
+  0%{background:#fff}
+  20%{background:#D1FAE5}
+  60%{background:#D1FAE5}
+  100%{background:#fff}
+}
+.card.flash{animation:flashGreen .7s ease}
+
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px}
+.card-name{
+  font-size:17px;font-weight:600;color:var(--lbl);line-height:1.35;flex:1;
+  word-break:break-word;overflow-wrap:break-word
+}
+.pill{
+  font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3px;
+  border-radius:100px;padding:3px 10px;flex-shrink:0;margin-top:2px
+}
+.p0{background:#FEF3C7;color:#92400E}
+.p1{background:#DBEAFE;color:#1E40AF}
+.p2{background:#D1FAE5;color:#065F46}
+.p3{background:#EDE9FE;color:#5B21B6}
+
+.card-when{
+  font-size:13px;color:var(--lbl2);margin-bottom:10px;
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap
+}
+.card-when.over{color:var(--red);font-weight:600}
+.card-when.due{color:var(--blue);font-weight:600}
+.card-when-days{color:var(--lbl3);font-size:12px}
+
+.prog{height:3px;background:var(--fill);border-radius:3px;margin-bottom:12px;overflow:hidden;display:none}
+
+/* U1 fix: 44px minimum touch target for buttons */
+.acts{display:flex;gap:8px}
+.btn-ok{
+  flex:1;background:var(--blue);color:#fff;border:none;border-radius:10px;
+  padding:13px 12px;min-height:44px;
+  font-size:15px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:opacity .12s,transform .1s;font-family:inherit
+}
+.btn-ok:active{opacity:.76;transform:scale(.97)}
+.btn-ok:disabled{opacity:.45;pointer-events:none}
+.btn-snooze{
+  background:var(--fill);color:var(--lbl2);border:none;border-radius:10px;
+  padding:13px 13px;min-height:44px;
+  font-size:13px;font-weight:500;cursor:pointer;
+  white-space:nowrap;display:flex;align-items:center;gap:6px;
+  transition:opacity .12s,background .12s;font-family:inherit
+}
+.btn-snooze:active{opacity:.6;background:var(--sep)}
+
+/* ══ Done card ═════════════════════════ */
+.done-row{
+  background:var(--card);border-radius:var(--r);padding:13px 16px;margin-bottom:10px;
+  display:flex;align-items:center;gap:12px
+}
+.done-icon{width:36px;height:36px;border-radius:50%;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.done-txt{flex:1;min-width:0}
+.done-name{font-size:15px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.done-meta{font-size:12px;color:var(--lbl2);margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+/* U1: 44pt touch target for delete button */
+.done-del{
+  background:none;border:none;cursor:pointer;
+  min-width:44px;min-height:44px;color:var(--lbl3);
+  display:flex;align-items:center;justify-content:center;
+  transition:color .12s
+}
+.done-del:active{color:var(--red)}
+
+/* ══ Weekday badge ═════════════════════ */
+.dow{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  font-size:12px;font-weight:700;flex-shrink:0;
+  font-family:'Outfit',-apple-system,sans-serif
+}
+.dow-sun{background:#FEE2E2;color:#DC2626}
+.dow-sat{background:#DBEAFE;color:#1D4ED8}
+.dow-wkd{background:rgba(118,118,128,.12);color:var(--lbl2)}
+
+/* ══ Empty state ═══════════════════════ */
+.empty{text-align:center;padding:48px 24px}
+.empty-icon{width:64px;height:64px;border-radius:20px;background:var(--fill);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.empty h3{font-size:17px;font-weight:600;color:var(--lbl);margin-bottom:6px}
+.empty p{font-size:14px;line-height:1.75;color:var(--lbl2)}
+
+/* ══ Tab bar ═══════════════════════════ */
+.tab-bar{
+  background:rgba(255,255,255,.92);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  backdrop-filter:saturate(180%) blur(20px);
+  border-top:.5px solid var(--sep);
+  display:flex;align-items:center;
+  padding-bottom:var(--safe-bottom);
+  height:calc(var(--tab-h) + var(--safe-bottom));
+  flex-shrink:0;z-index:50
+}
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;background:none;border:none;cursor:pointer;color:var(--lbl3);
+  /* U1: ensure 44pt min-height for entire tab tap area */
+  min-height:44px;padding:4px 0;
+  transition:color .15s;position:relative
+}
+.tab-lbl{font-size:10px;font-weight:500;letter-spacing:.15px;line-height:1}
+.tab-btn.on{color:var(--blue)}
+.tbadge{
+  position:absolute;top:2px;left:calc(50% + 7px);
+  background:var(--red);color:#fff;
+  font-size:9px;font-weight:700;font-family:'Outfit',sans-serif;
+  border-radius:100px;min-width:15px;height:15px;
+  display:flex;align-items:center;justify-content:center;padding:0 3px
+}
+.tbadge.h{display:none}
+.tab-fab{
+  flex:none;width:56px;display:flex;align-items:center;justify-content:center;
+  background:none;border:none;cursor:pointer;padding:0;min-height:44px
+}
+.fab-disc{
+  width:50px;height:50px;border-radius:50%;background:var(--blue);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(37,99,235,.4);
+  transition:transform .12s,box-shadow .12s
+}
+.tab-fab:active .fab-disc{transform:scale(.88);box-shadow:0 2px 8px rgba(37,99,235,.25)}
+
+/* ══ Search bar ════════════════════════ */
+.search-wrap{
+  position:sticky;top:0;z-index:10;
+  padding:10px 0 8px;background:var(--bg)
+}
+.search-box{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(118,118,128,.12);border-radius:12px;padding:8px 12px
+}
+.search-inp{
+  flex:1;background:none;border:none;outline:none;
+  font-family:inherit;font-size:16px;color:var(--lbl);min-width:0
+}
+.search-inp::placeholder{color:var(--lbl3)}
+.search-clear{
+  background:rgba(118,118,128,.35);border:none;border-radius:50%;
+  width:22px;height:22px;color:#fff;font-size:12px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  padding:0;flex-shrink:0
+}
+.search-cnt{font-size:12px;color:var(--lbl2);padding:0 4px;margin-top:5px}
+
+/* ══ Overlay ═══════════════════════════ */
+.overlay{
+  position:fixed;inset:0;z-index:100;
+  background:transparent;pointer-events:none;transition:background .28s
+}
+.overlay.on{background:rgba(0,0,0,.45);pointer-events:all}
+
+/* ══ Bottom sheet ══════════════════════ */
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:101;
+  background:var(--card);border-radius:20px 20px 0 0;
+  transform:translateY(110%);
+  transition:transform .38s cubic-bezier(.32,.72,0,1);
+  /* B4 fix: explicit safe-area padding on the sheet container */
+  padding-bottom:var(--safe-bottom);
+  /* U3 fix: allow sheet-body to scroll on small screens */
+  display:flex;flex-direction:column;max-height:90vh;
+}
+.sheet.on{transform:translateY(0)}
+.sheet-pull{width:36px;height:4px;background:var(--lbl3);border-radius:3px;margin:10px auto 6px;flex-shrink:0}
+.sheet-body{
+  padding:10px 20px 20px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  flex:1;min-height:0
+}
+.sheet-ttl{font-size:17px;font-weight:700;text-align:center;margin-bottom:18px}
+.sheet-inp{
+  width:100%;background:var(--fill);border:none;border-radius:12px;
+  padding:14px 16px;font-family:inherit;font-size:17px;color:var(--lbl);
+  outline:none;margin-bottom:12px;-webkit-appearance:none
+}
+.sheet-inp::placeholder{color:var(--lbl3)}
+.sheet-inp.shake{animation:shake .35s ease}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}80%{transform:translateX(4px)}
+}
+
+/* ── Date selector ── */
+.date-label{font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.seg{display:flex;background:var(--fill);border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}
+.seg-btn{
+  flex:1;border:none;border-radius:8px;padding:9px 6px;
+  font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;
+  color:var(--lbl2);background:none;transition:all .18s;line-height:1.2;text-align:center
+}
+.seg-btn.on{background:#fff;color:var(--lbl);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.date-custom-wrap{
+  overflow:hidden;max-height:0;opacity:0;
+  transition:max-height .28s ease,opacity .22s ease;margin-bottom:0
+}
+.date-custom-wrap.open{max-height:60px;opacity:1;margin-bottom:10px}
+.date-inp{
+  width:100%;background:var(--fill);border:none;border-radius:12px;
+  padding:12px 14px;font-family:inherit;font-size:16px;color:var(--lbl);
+  outline:none;-webkit-appearance:none;appearance:none
+}
+.sheet-info{
+  background:var(--blue-bg);border-radius:10px;padding:11px 14px;margin-bottom:16px;
+  font-size:13px;color:var(--blue-d);line-height:1.75;display:flex;flex-direction:column;gap:4px
+}
+.sheet-info-row{display:flex;align-items:center;gap:8px}
+.sheet-ok{
+  width:100%;background:var(--blue);color:#fff;border:none;border-radius:14px;
+  padding:16px;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;
+  min-height:52px;transition:opacity .12s
+}
+.sheet-ok:active{opacity:.8}
+
+/* ══ Toast ═════════════════════════════ */
+.toast{
+  position:fixed;
+  bottom:calc(var(--tab-h) + var(--safe-bottom) + 14px);left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:rgba(28,28,30,.9);
+  -webkit-backdrop-filter:saturate(180%) blur(16px);backdrop-filter:saturate(180%) blur(16px);
+  color:#fff;padding:10px 20px;border-radius:100px;
+  font-size:14px;font-weight:500;z-index:999;
+  opacity:0;transition:opacity .2s,transform .28s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;display:flex;align-items:center;gap:8px;
+  max-width:calc(100vw - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ══ Edit button on card ════════════════ */
+.btn-edit{
+  background:none;border:none;cursor:pointer;
+  padding:4px 6px;color:var(--lbl3);
+  display:flex;align-items:center;
+  border-radius:6px;transition:background .12s,color .12s;
+  flex-shrink:0;margin-top:1px;
+}
+.btn-edit:active{background:var(--fill);color:var(--blue)}
+
+/* Fix7: stronger visual for due/over states */
+.card.due .card-when{ color:var(--blue); }
+.card.over .card-when{ color:var(--red); }
+.card.due{ background:linear-gradient(to right, #EFF6FF 0%, #fff 40%); }
+.card.over{ background:linear-gradient(to right, #FFF1F0 0%, #fff 40%); }
+
+/* ══ Step dots (replaces thin progress bar) ═ */
+.step-dots{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.step-dot{
+  width:9px;height:9px;border-radius:50%;background:var(--fill);
+  transition:background .2s,transform .15s;flex-shrink:0
+}
+.step-dot.done{background:var(--blue)}
+.step-dot.active{
+  background:var(--blue);transform:scale(1.25);
+  box-shadow:0 0 0 3px rgba(37,99,235,.18)
+}
+.step-dot-lbl{font-size:12px;color:var(--lbl2);margin-left:4px}
+.step-dot-lbl.active{color:var(--blue);font-weight:600}
+
+/* ══ Streak badge in navbar ═══════════════ */
+.streak{
+  display:flex;align-items:center;gap:4px;
+  background:linear-gradient(135deg,#FEF3C7,#FDE68A);
+  border:1px solid #F59E0B;border-radius:100px;
+  padding:3px 10px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;color:#92400E
+}
+.streak.zero{background:var(--fill);border-color:transparent;color:var(--lbl3)}
+
+/* ══ All-done hero (special state) ════════ */
+.hero.all-done{
+  background:linear-gradient(145deg,#065F46,#059669 55%,#34D399)
+}
+
+/* ══ Snooze picker pointer-events fix ════ */
+.snooze-pick{
+  position:fixed;inset:0;z-index:150;
+  display:flex;align-items:flex-end;
+  pointer-events:none;   /* fix7: block nothing when closed */
+}
+.snooze-pick.on{pointer-events:all}
+.snooze-pick-bg{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .2s}
+.snooze-pick.on .snooze-pick-bg{background:rgba(0,0,0,.35)}
+.snooze-pick-box{
+  position:relative;width:100%;background:var(--card);
+  border-radius:20px 20px 0 0;
+  padding:0 16px calc(16px + var(--safe-bottom));
+  transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1)
+}
+.snooze-pick.on .snooze-pick-box{transform:translateY(0)}
+.snooze-pick-pull{width:36px;height:4px;background:var(--lbl3);border-radius:3px;margin:10px auto 14px}
+.snooze-pick-ttl{font-size:13px;color:var(--lbl2);font-weight:600;text-align:center;margin-bottom:10px}
+.snooze-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.snooze-opt{
+  background:var(--fill);border:none;border-radius:12px;
+  padding:15px 18px;text-align:left;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:space-between;
+  transition:background .12s;min-height:52px
+}
+.snooze-opt:active{background:var(--sep)}
+.snooze-opt-lbl{font-size:16px;font-weight:500;color:var(--lbl)}
+.snooze-opt-date{font-size:13px;color:var(--lbl2)}
+.snooze-cancel{
+  background:none;border:none;width:100%;padding:14px;
+  font-size:16px;font-weight:600;color:var(--red);
+  font-family:inherit;cursor:pointer;border-radius:12px;
+  transition:background .12s
+}
+.snooze-cancel:active{background:var(--fill)}
+
+
+.adj-banner{
+  background:var(--card);border-radius:var(--r);margin-bottom:10px;
+  border:1.5px solid #FDE68A;overflow:hidden
+}
+.adj-header{
+  display:flex;align-items:center;gap:11px;padding:14px 16px;cursor:pointer;
+  -webkit-user-select:none;user-select:none;min-height:44px
+}
+.adj-icon{
+  width:38px;height:38px;border-radius:11px;flex-shrink:0;
+  background:linear-gradient(135deg,#F59E0B,#F97316);
+  display:flex;align-items:center;justify-content:center
+}
+.adj-titles{flex:1;min-width:0}
+.adj-title{font-size:15px;font-weight:700;color:var(--lbl)}
+.adj-sub{font-size:12px;color:var(--lbl2);margin-top:2px}
+.adj-chevron{color:var(--lbl3);transition:transform .22s ease;flex-shrink:0;display:flex}
+.adj-banner.open .adj-chevron{transform:rotate(180deg)}
+/* U2 fix: realistic max-height for smooth expand */
+.adj-body{max-height:0;overflow:hidden;transition:max-height .28s ease}
+.adj-banner.open .adj-body{max-height:480px}
+.adj-moves{padding:0 16px 4px;display:flex;flex-direction:column}
+.adj-move{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 0;border-top:.5px solid var(--sep)
+}
+.adj-move:first-child{border-top:none}
+.adj-move-name{flex:1;font-size:14px;font-weight:500;color:var(--lbl);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adj-move-arrow{display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:160px}
+.adj-move-from{font-size:12px;color:var(--lbl3);text-decoration:line-through}
+.adj-move-to{font-size:12px;font-weight:700;color:var(--blue)}
+.adj-footer{display:flex;gap:8px;padding:12px 16px 16px}
+.adj-apply{
+  flex:1;background:var(--blue);color:#fff;border:none;border-radius:10px;
+  padding:12px;min-height:44px;
+  font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .12s
+}
+.adj-apply:active{opacity:.75}
+.adj-dismiss{
+  background:var(--fill);color:var(--lbl2);border:none;border-radius:10px;
+  padding:12px 16px;min-height:44px;
+  font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;white-space:nowrap
+}
+/* ══ Edit modal ════════════════════════ */
+.edit-modal{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;pointer-events:none}
+.edit-modal.on{pointer-events:all}
+.edit-modal-bg{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .22s}
+.edit-modal.on .edit-modal-bg{background:rgba(0,0,0,.4)}
+.edit-modal-box{
+  position:relative;width:100%;background:var(--card);
+  border-radius:20px 20px 0 0;padding:16px 20px calc(20px + var(--safe-bottom));
+  transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1);
+}
+.edit-modal.on .edit-modal-box{transform:translateY(0)}
+.edit-modal-pull{width:36px;height:4px;background:var(--lbl3);border-radius:3px;margin:0 auto 16px}
+.edit-modal-ttl{font-size:15px;font-weight:700;color:var(--lbl2);text-align:center;margin-bottom:14px}
+.edit-modal-inp{
+  width:100%;background:var(--fill);border:none;border-radius:12px;
+  padding:14px 16px;font-family:inherit;font-size:17px;color:var(--lbl);
+  outline:none;-webkit-appearance:none;margin-bottom:12px;
+}
+.edit-actions{display:flex;gap:8px}
+.edit-save{flex:1;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer}
+.edit-save:active{opacity:.8}
+.edit-cancel{background:var(--fill);color:var(--lbl2);border:none;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:500;font-family:inherit;cursor:pointer}
+.edit-cancel:active{opacity:.7}
+
+/* ══ Undo bar ══════════════════════════ */
+.undo-bar{
+  position:fixed;bottom:calc(var(--tab-h) + var(--safe-bottom) + 10px);
+  left:16px;right:16px;
+  background:rgba(28,28,30,.96);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  border-radius:14px;padding:12px 16px;
+  display:flex;align-items:center;gap:10px;
+  /* Fix3: z-index above toast (999) so undo is never hidden */
+  z-index:1000;
+  transform:translateY(20px);opacity:0;pointer-events:none;
+  transition:transform .28s cubic-bezier(.34,1.3,.64,1),opacity .2s;
+}
+.undo-bar.on{transform:translateY(0);opacity:1;pointer-events:all}
+.undo-bar-msg{flex:1;color:#fff;font-size:14px;font-weight:500}
+.undo-bar-prog{position:absolute;bottom:0;left:0;height:2px;background:#60A5FA;border-radius:0 0 14px 14px;transition:width linear}
+.undo-btn{background:rgba(96,165,250,.25);border:none;border-radius:8px;padding:7px 14px;color:#60A5FA;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
+.undo-btn:active{opacity:.7}
+
+/* ══ Celebration ═══════════════════════ */
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+.confetti-piece{position:fixed;z-index:500;pointer-events:none;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards}
+.celebrate-box{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(.8);
+  background:var(--card);border-radius:24px;padding:32px 40px;text-align:center;
+  z-index:501;pointer-events:none;opacity:0;
+  transition:opacity .18s,transform .28s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 20px 60px rgba(0,0,0,.2);
+}
+.celebrate-box.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.celebrate-emoji{font-size:52px;display:block;margin-bottom:10px}
+.celebrate-title{font-size:20px;font-weight:700;color:var(--lbl);margin-bottom:4px;font-family:'Outfit',sans-serif}
+.celebrate-sub{font-size:14px;color:var(--lbl2)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Navbar -->
+  <div class="navbar">
+    <div class="nav-inner">
+      <div class="nav-row">
+        <div class="nav-title" id="nav-title">今日のタスク</div>
+        <div class="nav-date" id="nav-date"></div>
+      </div>
+      <div class="stat-row" id="stat-row"></div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels">
+    <div class="panel visible" id="p-today"></div>
+    <div class="panel" id="p-upcoming"></div>
+    <div class="panel" id="p-done"></div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn on" data-tab="today" data-idx="0" onclick="switchTab(this)">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <span class="tab-lbl">今日</span>
+      <span class="tbadge h" id="tbadge"></span>
+    </button>
+    <button class="tab-btn" data-tab="upcoming" data-idx="1" onclick="switchTab(this)">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      <span class="tab-lbl">予定</span>
+    </button>
+    <button class="tab-fab" onclick="openSheet()" aria-label="単元を追加">
+      <div class="fab-disc">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+    </button>
+    <button class="tab-btn" data-tab="done" data-idx="2" onclick="switchTab(this)">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span class="tab-lbl">完了</span>
+    </button>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+
+<!-- Bottom sheet -->
+<div class="sheet" id="sheet">
+  <div class="sheet-pull"></div>
+  <div class="sheet-body">
+    <div class="sheet-ttl">単元を追加する</div>
+    <input class="sheet-inp" id="inp" type="text" placeholder="単元名（例：二次関数）" maxlength="40" autocomplete="off" autocorrect="off">
+    <div class="date-label">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      学習日
+    </div>
+    <div class="seg" id="date-seg">
+      <button class="seg-btn on" data-val="today"     onclick="selectDateSeg(this)">今日</button>
+      <button class="seg-btn"    data-val="yesterday" onclick="selectDateSeg(this)">昨日</button>
+      <button class="seg-btn"    data-val="custom"    onclick="selectDateSeg(this)">日付を選ぶ</button>
+    </div>
+    <div class="date-custom-wrap" id="date-custom-wrap">
+      <input class="date-inp" id="date-inp" type="date">
+    </div>
+    <div class="sheet-info" id="sheet-info"></div>
+    <button class="sheet-ok" onclick="addUnit()">追加する</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Snooze picker -->
+<div class="snooze-pick" id="snooze-pick">
+  <div class="snooze-pick-bg" onclick="closeSnooze()"></div>
+  <div class="snooze-pick-box">
+    <div class="snooze-pick-pull"></div>
+    <div class="snooze-pick-ttl" id="snooze-pick-ttl">延期する日数を選択</div>
+    <div class="snooze-opts" id="snooze-opts"></div>
+    <button class="snooze-cancel" onclick="closeSnooze()">キャンセル</button>
+  </div>
+</div>
+
+<!-- P1: Edit modal -->
+<div class="edit-modal" id="edit-modal">
+  <div class="edit-modal-bg" onclick="closeEdit()"></div>
+  <div class="edit-modal-box">
+    <div class="edit-modal-pull"></div>
+    <div class="edit-modal-ttl">単元名を編集</div>
+    <input class="edit-modal-inp" id="edit-inp" type="text" maxlength="40" autocomplete="off" autocorrect="off">
+    <div class="edit-actions">
+      <button class="edit-cancel" onclick="closeEdit()">キャンセル</button>
+      <button class="edit-save" onclick="saveEdit()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- P2: Undo bar -->
+<div class="undo-bar" id="undo-bar">
+  <span class="undo-bar-msg" id="undo-msg"></span>
+  <button class="undo-btn" onclick="undoDelete()">元に戻す</button>
+  <div class="undo-bar-prog" id="undo-prog"></div>
+</div>
+
+<!-- P5: Celebration overlay -->
+<div class="celebrate-box" id="celebrate-box">
+  <span class="celebrate-emoji">🎉</span>
+  <div class="celebrate-title">全復習完了！</div>
+  <div class="celebrate-sub" id="celebrate-sub"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   SVG ICON LIBRARY
+   B5 fix: define proper large/small variants, no string.replace() hacks
+══════════════════════════════════════════ */
+const IC = {
+  check:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  checkGreen: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  checkCircle:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+  moon:       `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
+  trash:      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`,
+  search:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  searchLg:   `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  calendar:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  calendarLg: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  clock:      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+  clockLg:    `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+  alert:      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  alertSm:    `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  book:       `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  trophy:     `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 21 12 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 4H17l-1 7a5 5 0 0 1-4 4 5 5 0 0 1-4-4L7 4z"/><path d="M5 9H3a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1h3"/><path d="M19 9h2a2 2 0 0 0 2-2V5a1 1 0 0 0-1-1h-3"/></svg>`,
+  zap:        `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  wand:       `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2M15 16v-2M8 9H2M20 9h-2M17.8 11.8L19 13M15 9h.01M11 7l-1.2-1.2M17.8 6.2L19 5"/><path d="M9 17l-7 7"/><path d="M12.2 12.2L21 21"/></svg>`,
+  arrow:      `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+  chevDown:   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  pencil:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  todayStat:  `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  activeStat: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+};
+
+/* ══════════════════════════════════════════
+   CONSTANTS & DATA
+══════════════════════════════════════════ */
+const STEPS = ['1回目','2回目','3回目','4回目'];
+const INTS  = [1,7,14,28];
+const KEY   = 'fukushu-v5';
+const DOW   = '日月火水木金土';
+const TABS  = { today:'今日のタスク', upcoming:'予定一覧', done:'完了済み' };
+
+// Migrate old key if exists
+(()=>{ try { const old = localStorage.getItem('fukushu-v4'); if(old && !localStorage.getItem(KEY)) localStorage.setItem(KEY, old); } catch(_){} })();
+
+let U = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } })();
+const save  = () => localStorage.setItem(KEY, JSON.stringify(U));
+const td    = () => new Date().toISOString().slice(0,10);
+const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const diff  = s => Math.round((new Date(s+'T00:00:00')-new Date(td()+'T00:00:00'))/86400000);
+const haptic = (t='light') => { try { if(navigator.vibrate) navigator.vibrate(t==='medium'?8:t==='heavy'?[10,4,10]:4); } catch(_){} };
+const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ══ Date helpers ══════════════════════ */
+function dowClass(d){ return d===0?'dow-sun':d===6?'dow-sat':'dow-wkd'; }
+function dowBadge(s){
+  const d=new Date(s+'T00:00:00'), day=d.getDay();
+  return `<span class="dow ${dowClass(day)}">${DOW[day]}</span>`;
+}
+function fmtShort(s){
+  const d=new Date(s+'T00:00:00');
+  return `${d.getMonth()+1}月${d.getDate()}日 ${dowBadge(s)}`;
+}
+function fmtShortText(s){
+  const d=new Date(s+'T00:00:00');
+  return `${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）`;
+}
+function fmtFull(s){
+  const d=new Date(s+'T00:00:00');
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${dowBadge(s)}`;
+}
+
+/* ══ Scroll position preservation ══════
+   B2 fix: save/restore scroll per panel so render() doesn't jump to top
+══════════════════════════════════════════ */
+const _scroll = {today:0, upcoming:0, done:0};
+function saveScroll(){
+  ['today','upcoming','done'].forEach(id=>{
+    const el=document.getElementById('p-'+id);
+    // Fix2: use getComputedStyle so CSS-class-driven display:none is detected correctly
+    if(el && getComputedStyle(el).display!=='none') _scroll[id]=el.scrollTop;
+  });
+}
+function restoreScroll(){
+  ['today','upcoming','done'].forEach(id=>{
+    const el=document.getElementById('p-'+id);
+    if(el) el.scrollTop=_scroll[id]||0;
+  });
+}
+
+/* ══ Streak tracking ════════════════════
+   Rules: completing ≥1 review on a calendar day counts.
+   Streak = consecutive days ending today (or yesterday).
+══════════════════════════════════════════ */
+const STREAK_KEY = 'fukushu-streak-v1';
+
+function loadStreak(){
+  try { return JSON.parse(localStorage.getItem(STREAK_KEY)) || {count:0, lastDate:''}; }
+  catch { return {count:0, lastDate:''}; }
+}
+function saveStreak(s){ localStorage.setItem(STREAK_KEY, JSON.stringify(s)); }
+
+function bumpStreak(){
+  const t = td(), s = loadStreak();
+  if(s.lastDate === t) return s; // already bumped today
+  const yesterday = addD(t, -1);
+  if(s.lastDate === yesterday){
+    s.count++; // extended
+  } else if(s.lastDate < yesterday || !s.lastDate){
+    s.count = 1; // broken or fresh
+  }
+  s.lastDate = t;
+  saveStreak(s);
+  return s;
+}
+
+function getStreak(){
+  const s = loadStreak(), t = td();
+  // Streak is live only if last activity was today or yesterday
+  if(s.lastDate === t || s.lastDate === addD(t,-1)) return s.count;
+  return 0;
+}
+
+
+let adjDismissed = false;
+let searchQ = '';
+
+/* ══ Sheet date state ══════════════════ */
+let _sheetDateMode = 'today';
+
+function getSheetDate(){
+  if(_sheetDateMode==='yesterday') return addD(td(),-1);
+  if(_sheetDateMode==='custom'){
+    const v=document.getElementById('date-inp')?.value;
+    if(v){
+      if(v>td()) return td();
+      if(v<addD(td(),-30)) return addD(td(),-30);
+      return v;
+    }
+    return td();
+  }
+  return td();
+}
+
+function selectDateSeg(btn){
+  document.querySelectorAll('#date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  _sheetDateMode=btn.dataset.val;
+  haptic();
+  const wrap=document.getElementById('date-custom-wrap');
+  if(_sheetDateMode==='custom'){
+    wrap.classList.add('open');
+    const di=document.getElementById('date-inp');
+    if(!di.value) di.value=addD(td(),-1);
+    di.max=td(); di.min=addD(td(),-30);
+    setTimeout(()=>di.focus(),160);
+  } else {
+    wrap.classList.remove('open');
+  }
+  updateSheetInfo();
+}
+
+function updateSheetInfo(){
+  const date=getSheetDate(), first=addD(date,INTS[0]);
+  document.getElementById('sheet-info').innerHTML=
+    `<div class="sheet-info-row">${IC.calendar} 学習日：${fmtFull(date)}</div>
+     <div class="sheet-info-row">${IC.clock} 1回目の復習：${fmtShortText(first)}</div>`;
+}
+
+/* ══════════════════════════════════════════
+   ACTIONS
+══════════════════════════════════════════ */
+function addUnit(){
+  const inp=document.getElementById('inp');
+  const name=inp.value.trim();
+  if(!name){
+    inp.classList.remove('shake');
+    void inp.offsetWidth;
+    inp.classList.add('shake');
+    haptic('medium'); inp.focus(); return;
+  }
+  const learnDate=getSheetDate();
+  U.unshift({id:Date.now().toString(),name,addedDate:learnDate,step:0,nextDate:addD(learnDate,INTS[0]),done:false,isNew:true});
+  save(); inp.value=''; closeSheet();
+  adjDismissed=false;
+  render();
+  // B1 fix: esc(name) prevents XSS in toast innerHTML
+  const suffix = learnDate!==td() ? `（${fmtShortText(learnDate)}）` : '';
+  setTimeout(()=>toast(IC.checkCircle, esc(name)+'を追加'+suffix), 340);
+  haptic('medium');
+}
+
+const _completing = new Set();
+
+function complete(id){
+  if(_completing.has(id)) return;
+  _completing.add(id);
+  const u=U.find(x=>x.id===id); if(!u){ _completing.delete(id); return; }
+  const card=document.getElementById('c-'+id);
+  if(card) card.classList.add('flash');
+  haptic('medium');
+  u.step++;
+  if(u.step>=4){
+    u.done=true;
+    u.completedAt = Date.now(); // for sort in done tab
+    bumpStreak();
+    save();
+    shrinkOut('w-'+id,()=>{ render(); _completing.delete(id); });
+    // P5: celebration for final completion
+    setTimeout(()=>celebrate(u.name), 320);
+    toast(IC.checkCircle, esc(u.name)+'の全復習が完了！');
+  } else {
+    u.nextDate=addD(td(),INTS[u.step]);
+    bumpStreak();
+    save();
+    // B1 fix: esc names in toast
+    const msg=esc(STEPS[u.step-1])+'完了！次回: '+fmtShortText(u.nextDate);
+    if(u.nextDate>td()){
+      setTimeout(()=>shrinkOut('w-'+id,()=>{ render(); _completing.delete(id); }),520);
+    } else {
+      setTimeout(()=>{ render(); _completing.delete(id); },580);
+    }
+    toast(IC.check, msg);
+  }
+}
+
+/* ══ Fix5: Snooze picker ════════════════ */
+let _snoozeId = null;
+function openSnooze(id){
+  const u=U.find(x=>x.id===id); if(!u) return;
+  _snoozeId=id;
+  document.getElementById('snooze-pick-ttl').textContent=`「${u.name}」を延期する`;
+  const opts=document.getElementById('snooze-opts');
+  const options=[
+    {days:1, label:'明日に延期'},
+    {days:2, label:'2日後に延期'},
+    {days:3, label:'3日後に延期'},
+    {days:7, label:'1週間後に延期'},
+  ];
+  opts.innerHTML=options.map(o=>{
+    const dateStr=fmtShortText(addD(td(),o.days));
+    // Fix6: unit name used only in snooze-pick-ttl via textContent (safe);
+    // dateStr from our own fmtShortText is trusted HTML; no user input in innerHTML here
+    return `<button class="snooze-opt" onclick="applySnooze(${o.days})">
+      <span class="snooze-opt-lbl">${esc(o.label)}</span>
+      <span class="snooze-opt-date">${dateStr}</span>
+    </button>`;
+  }).join('');
+  document.getElementById('snooze-pick').classList.add('on');
+  haptic();
+}
+function closeSnooze(){
+  document.getElementById('snooze-pick').classList.remove('on');
+  _snoozeId=null;
+}
+function applySnooze(days){
+  const u=U.find(x=>x.id===_snoozeId); if(!u){ closeSnooze(); return; }
+  u.nextDate=addD(td(),days); save();
+  closeSnooze();
+  haptic('medium');
+  shrinkOut('w-'+u.id,()=>render());
+  const label=days===1?'明日':days===7?'1週間後':`${days}日後`;
+  toast(IC.moon, esc(u.name)+`を${label}に延期しました`);
+}
+
+function snooze(id){ openSnooze(id); } // legacy alias
+
+function del(id){
+  if(openWrap && openWrap.dataset && openWrap.dataset.id===id){
+    openWrap._closeSwipe?.(); openWrap=null;
+  }
+  const idx=U.findIndex(x=>x.id===id); if(idx<0) return;
+  const unit=U[idx];
+  haptic();
+  shrinkOut('w-'+id,()=>{
+    U=U.filter(x=>x.id!==id); save(); render();
+    showUndo(unit, idx, `「${unit.name}」を削除しました`);
+  });
+}
+
+function shrinkOut(wid,cb){
+  const el=document.getElementById(wid); if(!el){ cb(); return; }
+  const h=el.offsetHeight;
+  el.style.transition='none';
+  el.style.maxHeight=h+'px'; el.style.overflow='hidden';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    el.style.transition='max-height .28s ease,opacity .22s,margin-bottom .28s';
+    el.style.maxHeight='0'; el.style.opacity='0'; el.style.marginBottom='0';
+  }));
+  setTimeout(cb,320);
+}
+
+/* ══ Smart load balancer ═══════════════ */
+function analyzeLoad(){
+  const OVER=5, SHIFT=3, CAP=8;
+  const t=td();
+  const map={};
+  U.filter(u=>!u.done && u.nextDate>t).forEach(u=>{ map[u.nextDate]=map[u.nextDate]||[]; map[u.nextDate].push(u.id); });
+  const cnt={};
+  const todayCount=U.filter(u=>!u.done && u.nextDate<=t).length;
+  if(todayCount>0) cnt[t]=todayCount;
+  Object.keys(map).forEach(d=>cnt[d]=map[d].length);
+  const workMap={};
+  Object.keys(map).forEach(d=>workMap[d]=[...map[d]]);
+  const proposed=[];
+  for(const fromDate of Object.keys(cnt).sort()){
+    if((cnt[fromDate]||0)<OVER) continue;
+    const cands=[];
+    for(let delta=1;delta<=SHIFT;delta++){
+      const before=addD(fromDate,-delta), after=addD(fromDate,delta);
+      if(before>=t) cands.push({d:before,delta});
+      cands.push({d:after,delta});
+    }
+    cands.sort((a,b)=>{ const ca=cnt[a.d]||0,cb=cnt[b.d]||0; return ca!==cb?ca-cb:a.delta-b.delta; });
+    for(const id of [...(workMap[fromDate]||[])]){
+      if((cnt[fromDate]||0)<OVER || proposed.length>=CAP) break;
+      for(const {d:toDate} of cands){
+        if((cnt[toDate]||0)>=OVER) continue;
+        const u=U.find(x=>x.id===id); if(!u) continue;
+        proposed.push({id,name:u.name,from:fromDate,to:toDate});
+        cnt[fromDate]--; cnt[toDate]=(cnt[toDate]||0)+1;
+        const idx=(workMap[fromDate]||[]).indexOf(id);
+        if(idx>=0) workMap[fromDate].splice(idx,1);
+        break;
+      }
+    }
+  }
+  return proposed;
+}
+
+function applySmartAdjust(moves){
+  moves.forEach(({id,to})=>{ const u=U.find(x=>x.id===id); if(u) u.nextDate=to; });
+  save(); adjDismissed=true; render();
+  toast(IC.check, moves.length+'件のタスクを分散しました');
+  haptic('medium');
+}
+
+function toggleAdjBanner(){
+  const b=document.getElementById('adj-banner');
+  if(b){ b.classList.toggle('open'); haptic(); }
+}
+
+function dismissAdj(){
+  adjDismissed=true;
+  const b=document.getElementById('adj-banner'); if(!b) return;
+  // Correct order: read height → set transition:none → lock → rAF → animate
+  const h=b.offsetHeight;
+  b.style.transition='none';
+  b.style.maxHeight=h+'px'; b.style.overflow='hidden';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    b.style.transition='max-height .28s ease,opacity .22s,margin-bottom .28s';
+    b.style.maxHeight='0'; b.style.opacity='0'; b.style.marginBottom='0';
+  }));
+}
+
+function adjBannerHtml(moves){
+  window._adjMoves=moves; // B1 fix: avoid inline JSON in onclick attribute
+  const fromDates=[...new Set(moves.map(m=>m.from))];
+  const topDate=fromDates.reduce((a,b)=>moves.filter(m=>m.from===a).length>=moves.filter(m=>m.from===b).length?a:b);
+  const topCount=U.filter(u=>!u.done&&u.nextDate===topDate).length;
+  const sub=fromDates.length===1
+    ? fmtShortText(topDate)+' に '+topCount+' 件集中'
+    : fromDates.length+' 日間に集中しています';
+  const movesHtml=moves.map(m=>
+    '<div class="adj-move">'+
+    '<div class="adj-move-name">'+esc(m.name)+'</div>'+
+    '<div class="adj-move-arrow">'+
+      '<span class="adj-move-from">'+fmtShortText(m.from)+'</span>'+
+      '<span style="color:var(--lbl3);display:flex">'+IC.arrow+'</span>'+
+      '<span class="adj-move-to">'+fmtShortText(m.to)+'</span>'+
+    '</div></div>'
+  ).join('');
+  return '<div class="adj-banner" id="adj-banner">'+
+    '<div class="adj-header" onclick="toggleAdjBanner()">'+
+      '<div class="adj-icon">'+IC.wand+'</div>'+
+      '<div class="adj-titles">'+
+        '<div class="adj-title">スマート分散の提案</div>'+
+        '<div class="adj-sub">'+sub+' · '+moves.length+'件を調整可能</div>'+
+      '</div>'+
+      '<div class="adj-chevron">'+IC.chevDown+'</div>'+
+    '</div>'+
+    '<div class="adj-body">'+
+      '<div class="adj-moves">'+movesHtml+'</div>'+
+      '<div class="adj-footer">'+
+        '<button class="adj-apply" onclick="applySmartAdjust(window._adjMoves)">適用する</button>'+
+        '<button class="adj-dismiss" onclick="dismissAdj()">スキップ</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ══ P1: Edit unit name ════════════════ */
+let _editId = null;
+function openEdit(id){
+  const u=U.find(x=>x.id===id); if(!u) return;
+  _editId=id;
+  const inp=document.getElementById('edit-inp');
+  inp.value=u.name;
+  document.getElementById('edit-modal').classList.add('on');
+  setTimeout(()=>{ inp.focus(); inp.select(); },300);
+  haptic();
+}
+function closeEdit(){
+  // Fix1: blur first so iOS keyboard dismisses before the modal slides away
+  document.getElementById('edit-inp').blur();
+  document.getElementById('edit-modal').classList.remove('on');
+  _editId=null;
+}
+function saveEdit(){
+  const name=document.getElementById('edit-inp').value.trim();
+  if(!name) return;
+  const u=U.find(x=>x.id===_editId); if(!u) return;
+  u.name=name; save(); closeEdit(); render();
+  toast(IC.check, esc(name)+'に更新しました');
+  haptic('medium');
+}
+document.getElementById('edit-inp').addEventListener('keydown',e=>{ if(e.key==='Enter') saveEdit(); if(e.key==='Escape') closeEdit(); });
+
+/* ══ P2: Undo delete ═══════════════════ */
+let _undoStack = null; // { unit, idx }
+let _undoTimer = null;
+let _undoProgTimer = null;
+const UNDO_SEC = 5;
+
+function showUndo(unit, idx, msg){
+  _undoStack={unit,idx};
+  clearTimeout(_undoTimer); clearTimeout(_undoProgTimer);
+  document.getElementById('undo-msg').textContent=msg;
+  const bar=document.getElementById('undo-bar');
+  const prog=document.getElementById('undo-prog');
+  // Fix8: reset to 100% with no transition, then start countdown after bar is visible
+  prog.style.transition='none'; prog.style.width='100%';
+  bar.classList.add('on');
+  // Small delay so user sees the bar appear at full before it starts counting down
+  _undoProgTimer=setTimeout(()=>{
+    prog.style.transition=`width ${UNDO_SEC}s linear`;
+    prog.style.width='0%';
+  }, 80);
+  _undoTimer=setTimeout(()=>{ bar.classList.remove('on'); _undoStack=null; }, UNDO_SEC*1000+80);
+}
+function undoDelete(){
+  if(!_undoStack) return;
+  // Fix3: clear progress timer so it doesn't fire after undo
+  clearTimeout(_undoTimer);
+  clearTimeout(_undoProgTimer);
+  const {unit}=_undoStack; _undoStack=null;
+  // Fix4: re-find insertion point by date proximity instead of stale idx
+  // Insert before the first item whose nextDate is later than the restored unit's nextDate
+  const insertIdx = U.findIndex(u => u.nextDate > unit.nextDate && !u.done);
+  if(insertIdx === -1) U.push(unit); else U.splice(insertIdx, 0, unit);
+  save();
+  document.getElementById('undo-bar').classList.remove('on');
+  render();
+  toast(IC.checkCircle,'削除を取り消しました');
+  haptic('medium');
+}
+
+/* ══ P5: Celebration ═══════════════════ */
+function celebrate(name){
+  const COLORS=['#3B82F6','#F59E0B','#10B981','#EF4444','#8B5CF6','#EC4899','#F97316'];
+  for(let i=0;i<28;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    el.style.left=Math.random()*100+'vw';
+    el.style.top='-10px';
+    el.style.background=COLORS[Math.floor(Math.random()*COLORS.length)];
+    const dur=1.2+Math.random()*1.6;
+    const delay=Math.random()*.6;
+    el.style.animationDuration=dur+'s';
+    el.style.animationDelay=delay+'s';
+    document.body.appendChild(el);
+    // Fix5: primary cleanup via animationend; fallback timeout handles Safari edge cases
+    el.addEventListener('animationend',()=>el.remove(),{once:true});
+    setTimeout(()=>{ if(el.parentNode) el.remove(); },(dur+delay+0.5)*1000);
+  }
+  document.getElementById('celebrate-sub').textContent=`「${name}」の全4回復習完了！`;
+  const box=document.getElementById('celebrate-box');
+  box.classList.add('on');
+  setTimeout(()=>box.classList.remove('on'),2400);
+  haptic('heavy');
+}
+
+
+/* ══ Swipe gestures ════════════════════
+   Left  → reveal delete (existing)
+   Right → complete (new — only on today/upcoming cards)
+══════════════════════════════════════════ */
+let openWrap=null;
+function initSwipe(wrap){
+  if(wrap._swipeInit) return;
+  wrap._swipeInit=true;
+  const card=wrap.querySelector('.card'); if(!card) return;
+  let sx=0,sy=0,cx=0,live=false,dir=0;
+  const MAX_L=-80, MAX_R=72;
+
+  // Right-swipe complete overlay
+  const completeOver=document.createElement('div');
+  completeOver.style.cssText=
+    'position:absolute;left:0;top:0;bottom:0;width:'+Math.abs(MAX_R)+'px;'+
+    'background:#34C759;z-index:0;display:flex;flex-direction:column;'+
+    'align-items:center;justify-content:center;gap:3px;pointer-events:none;'+
+    'opacity:0;transition:opacity .15s';
+  completeOver.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'+
+    '<span style="color:#fff;font-size:11px;font-weight:600">完了</span>';
+  wrap.insertBefore(completeOver, card);
+
+  function closeSelf(){
+    cx=0; dir=0;
+    card.style.transition='transform .22s ease';
+    card.style.transform='';
+    completeOver.style.opacity='0';
+  }
+  wrap._closeSwipe=closeSelf;
+
+  wrap.addEventListener('touchstart',e=>{
+    if(openWrap&&openWrap!==wrap){ openWrap._closeSwipe?.(); openWrap=null; }
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; live=true; dir=0;
+    card.style.transition='none';
+  },{passive:true});
+
+  wrap.addEventListener('touchmove',e=>{
+    if(!live) return;
+    const dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
+    if(Math.abs(dy)>Math.abs(dx)+8){ live=false; return; }
+    // Lock direction after first 4px to avoid accidental directional switch
+    if(dir===0 && Math.abs(dx)>4) dir=dx>0?1:-1;
+    if(dir===-1){
+      if(dx>0&&cx>=0) return;
+      cx=Math.max(MAX_L,Math.min(0,cx+dx));
+      completeOver.style.opacity='0';
+    } else if(dir===1){
+      cx=Math.min(MAX_R,Math.max(0,cx+dx));
+      completeOver.style.opacity=Math.min(1,cx/MAX_R)+'';
+    } else return;
+    card.style.transform=`translateX(${cx}px)`;
+    sx=e.touches[0].clientX;
+  },{passive:true});
+
+  wrap.addEventListener('touchend',()=>{
+    live=false;
+    card.style.transition='transform .22s ease';
+    if(dir===1){
+      if(cx>=MAX_R*.6){
+        // Complete triggered — animate out then complete
+        card.style.transition='transform .18s ease,opacity .18s';
+        card.style.transform=`translateX(${window.innerWidth}px)`;
+        card.style.opacity='0';
+        const id=wrap.dataset.id;
+        setTimeout(()=>{ closeSelf(); complete(id); },200);
+        openWrap=null; return;
+      }
+      closeSelf(); openWrap=null;
+    } else {
+      if(cx<MAX_L*.45){ cx=MAX_L; openWrap=wrap; haptic(); }
+      else { cx=0; openWrap=null; }
+      card.style.transform=cx?`translateX(${cx}px)`:'';
+    }
+  });
+}
+document.addEventListener('touchstart',e=>{
+  if(openWrap&&!openWrap.contains(e.target)){ openWrap._closeSwipe?.(); openWrap=null; }
+},{passive:true});
+
+/* ══════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════ */
+function render(){
+  if(openWrap&&!document.contains(openWrap)) openWrap=null;
+  saveScroll(); // B2 fix: preserve scroll before rebuilding innerHTML
+
+  const t=td();
+  const active=U.filter(u=>!u.done).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  const todayL=active.filter(u=>u.nextDate<=t);
+  const upL   =active.filter(u=>u.nextDate>t);
+  const doneL =U.filter(u=>u.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+  const over  =todayL.filter(u=>diff(u.nextDate)<0).length;
+
+  const streak = getStreak();
+  let chips=`<div class="chip">${IC.todayStat} 今日 <b>${todayL.length}</b></div>`;
+  if(over>0) chips+=`<div class="chip warn">${IC.alertSm} 超過 ${over}</div>`;
+  chips+=`<div class="chip">${IC.activeStat} 予定 <b>${upL.length}</b></div>`;
+  chips+=`<div class="chip" style="background:var(--fill);border-color:transparent;color:var(--lbl2)">修了 <b>${doneL.length}</b></div>`;
+  chips+=streak>0
+    ? `<div class="streak">🔥 ${streak}日連続</div>`
+    : `<div class="streak zero">🔥 0日</div>`;
+  document.getElementById('stat-row').innerHTML=chips;
+
+  const tb=document.getElementById('tbadge');
+  if(todayL.length>0){ tb.textContent=todayL.length; tb.classList.remove('h'); }
+  else tb.classList.add('h');
+
+  rToday(todayL, active.length > 0);
+  rUpcoming(upL);
+  rDone(doneL);
+
+  // Clear isNew flags after first render
+  U.forEach(u=>delete u.isNew);
+
+  document.querySelectorAll('#p-today .cw[data-id]').forEach(w=>initSwipe(w));
+  restoreScroll(); // B2 fix: restore scroll after rebuild
+}
+
+/* ── Today panel ── */
+function rToday(list, hasActive){
+  const el=document.getElementById('p-today');
+  if(!list.length){
+    // Different state: tasks exist but all done today vs truly empty app
+    if(hasActive){
+      el.innerHTML=`
+        <div class="hero all-done">
+          <div class="hero-top"><div class="hero-eyebrow">Today's Tasks</div></div>
+          <div class="hero-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          <div class="hero-msg">お疲れさまです！</div>
+          <div class="hero-sub">今日の復習をすべて完了しました 🎉</div>
+        </div>
+        <div class="empty">
+          <div class="empty-icon" style="background:#D1FAE5">${IC.calendarLg}</div>
+          <p>「予定」タブで<br>次の復習スケジュールを確認しましょう</p>
+        </div>`;
+    } else {
+      el.innerHTML=`
+        <div class="hero">
+          <div class="hero-top"><div class="hero-eyebrow">Today's Tasks</div></div>
+          <div class="hero-icon">${IC.zap}</div>
+          <div class="hero-msg">単元を追加しましょう</div>
+          <div class="hero-sub">＋ボタンから最初の単元を登録できます</div>
+        </div>
+        <div class="empty">
+          <div class="empty-icon">${IC.calendarLg}</div>
+          <p>復習したい単元を追加すると<br>スケジュールが自動で組まれます</p>
+        </div>`;
+    }
+    return;
+  }
+  // P4 fix: separate overdue from due-today
+  const overdue = list.filter(u=>diff(u.nextDate)<0);
+  const dueToday = list.filter(u=>diff(u.nextDate)===0);
+  const over = overdue.length;
+  const sub = over>0 ? `うち <b>${over}</b> 件が期限超過` : `全件、今日が期限です`;
+  let html=`
+    <div class="hero">
+      <div class="hero-top">
+        <div class="hero-eyebrow">Today's Tasks</div>
+        <div class="hero-badge">${list.length} 件</div>
+      </div>
+      <div class="hero-icon">${IC.book}</div>
+      <div class="hero-msg">${list.length} 件の復習があります</div>
+      <div class="hero-sub">${sub}</div>
+    </div>`;
+  if(overdue.length){
+    html+=`<div class="sec sec-first" style="color:#DC2626">${IC.alertSm} 期限超過 (${overdue.length})</div>`;
+    html+=overdue.map(u=>cHtml(u)).join('');
+  }
+  if(dueToday.length){
+    html+=`<div class="sec${overdue.length?'':' sec-first'}">今日が期限 (${dueToday.length})</div>`;
+    html+=dueToday.map(u=>cHtml(u)).join('');
+  }
+  el.innerHTML=html;
+}
+
+/* ── Upcoming panel ── */
+function rUpcoming(list){
+  const el=document.getElementById('p-upcoming');
+  let adjHtml='';
+  if(!searchQ&&!adjDismissed){ const m=analyzeLoad(); if(m.length) adjHtml=adjBannerHtml(m); }
+
+  const barHtml=`<div class="search-wrap">
+    <div class="search-box">
+      <span style="opacity:.4;display:flex;flex-shrink:0">${IC.search}</span>
+      <input class="search-inp" id="search-inp" type="search" placeholder="単元名で検索…"
+        value="${esc(searchQ)}" autocomplete="off" autocorrect="off" spellcheck="false">
+      ${searchQ?`<button class="search-clear" id="search-clear">✕</button>`:''}
+    </div>
+    ${list.length?`<div class="search-cnt" id="search-cnt"></div>`:''}
+  </div>`;
+
+  if(!list.length){
+    el.innerHTML=barHtml+adjHtml+`<div class="empty">
+      <div class="empty-icon" style="background:var(--blue-bg)">${IC.clockLg}</div>
+      <h3>予定中の復習はありません</h3>
+      <p>＋ ボタンから新しい単元を<br>追加してみましょう</p>
+    </div>`;
+    bindSearch(el); return;
+  }
+
+  const q=searchQ.trim().toLowerCase();
+  const filtered=q?list.filter(u=>u.name.toLowerCase().includes(q)):list;
+  let cardsHtml='',lastG='',isFirst=true;
+  if(filtered.length){
+    filtered.forEach(u=>{
+      const d=diff(u.nextDate);
+      const g=d<=7?'今週':d<=14?'来週':'2週間以降';
+      if(!q&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
+      cardsHtml+=cHtml(u);
+    });
+  } else {
+    cardsHtml=`<div class="empty" style="padding:28px 0">
+      <div class="empty-icon">${IC.searchLg}</div>
+      <h3>該当する単元がありません</h3>
+      <p>「${esc(searchQ)}」に一致する単元は<br>見つかりませんでした</p>
+    </div>`;
+  }
+  el.innerHTML=barHtml+adjHtml+cardsHtml;
+  const cnt=el.querySelector('#search-cnt');
+  if(cnt) cnt.textContent=q?`「${searchQ}」の検索結果：${filtered.length} 件`:`全 ${list.length} 件`;
+  bindSearch(el);
+  document.querySelectorAll('#p-upcoming .cw[data-id]').forEach(w=>initSwipe(w));
+}
+
+/* ── Done panel ── */
+function rDone(list){
+  const el=document.getElementById('p-done');
+  if(!list.length){
+    el.innerHTML=`<div class="empty">
+      <div class="empty-icon" style="background:#D1FAE5">${IC.trophy}</div>
+      <h3>完了した単元はありません</h3>
+      <p>4回の復習を終えた単元が<br>ここに表示されます</p>
+    </div>`; return;
+  }
+  let html=`<div class="sec sec-first">完了した単元（${list.length}）</div>`;
+  html+=list.map(u=>`
+    <div class="done-row" id="w-${u.id}">
+      <div class="done-icon">${IC.checkGreen}</div>
+      <div class="done-txt">
+        <div class="done-name">${esc(u.name)}</div>
+        <div class="done-meta">${IC.calendar} ${fmtFull(u.addedDate)}　全4回完了</div>
+      </div>
+      <button class="done-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+    </div>`).join('');
+  el.innerHTML=html;
+}
+
+/* ── Card HTML ── */
+function cHtml(u){
+  const d=diff(u.nextDate), over=d<0, due=d===0;
+  const pct=(u.step/4)*100;
+  const when=over
+    ?`<div class="card-when over">${IC.alert} ${Math.abs(d)}日超過中</div>`
+    :due
+    ?`<div class="card-when due">${IC.clock} 今日が期限</div>`
+    :`<div class="card-when">${IC.calendar} ${fmtShort(u.nextDate)}<span class="card-when-days">· ${d}日後</span></div>`;
+  // B3 fix: only add 'new-card' class when unit is freshly added (u.isNew flag)
+  const newCls = u.isNew ? ' new-card' : '';
+  // Step dots — much clearer than 3px bar at a glance
+  const dotsHtml = STEPS.map((_,i)=>{
+    const cls = i < u.step ? 'done' : i === u.step ? 'active' : '';
+    return `<span class="step-dot ${cls}"></span>`;
+  }).join('') + `<span class="step-dot-lbl${u.step<4?' active':''}">${u.step<4?STEPS[u.step]:'完了'}</span>`;
+
+  return `<div class="cw${newCls}" id="w-${u.id}" data-id="${u.id}">
+    <div class="swipe-bg" onclick="del('${u.id}')">
+      ${IC.trash}<span class="swipe-bg-lbl">削除</span>
+    </div>
+    <div class="card ${over?'over':''} ${due?'due':''}" id="c-${u.id}">
+      <div class="card-top">
+        <div class="card-name">${esc(u.name)}</div>
+        <button class="btn-edit" onclick="openEdit('${u.id}')" aria-label="編集">${IC.pencil}</button>
+        <span class="pill p${u.step}">${STEPS[u.step]}</span>
+      </div>
+      ${when}
+      <div class="step-dots">${dotsHtml}</div>
+      <div class="acts">
+        <button class="btn-ok" onclick="complete('${u.id}')">${IC.check} 完了にする</button>
+        <button class="btn-snooze" onclick="openSnooze('${u.id}')">${IC.moon} 延期</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── Search binding ── */
+function bindSearch(el){
+  const inp=el.querySelector('#search-inp'); if(!inp) return;
+  if(searchQ){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+  inp.addEventListener('input',e=>{ searchQ=e.target.value; render(); });
+  inp.addEventListener('search',e=>{ searchQ=e.target.value; render(); });
+  const clr=el.querySelector('#search-clear');
+  if(clr) clr.addEventListener('click',()=>{
+    searchQ=''; render();
+    setTimeout(()=>document.querySelector('#search-inp')?.focus(),50);
+  });
+}
+
+/* ══ Tab switch ════════════════════════ */
+let currentTabIdx=0;
+function switchTab(btn){
+  const id=btn.dataset.tab, newIdx=parseInt(btn.dataset.idx);
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('on',b===btn));
+
+  // B6 fix: clean state-based panel visibility, no static opacity/transform on .panel
+  document.querySelectorAll('.panel').forEach(p=>{
+    const isTarget = p.id==='p-'+id;
+    p.classList.remove('slide-in','slide-back','visible');
+    if(isTarget){
+      // Fix2: clear stale inline display:none so CSS animation class can take effect
+      p.style.display='';
+      void p.offsetWidth;
+      p.classList.add(newIdx>=currentTabIdx?'slide-in':'slide-back');
+      // Fix8: fallback timeout in case animationend doesn't fire (Safari background tab)
+      const onEnd=()=>{
+        p.classList.remove('slide-in','slide-back');
+        p.classList.add('visible');
+        p.removeEventListener('animationend',onEnd);
+      };
+      p.addEventListener('animationend',onEnd);
+      setTimeout(onEnd, 400); // fallback: .22s anim + buffer
+    } else {
+      p.style.display='none';
+    }
+  });
+
+  document.getElementById('nav-title').textContent=TABS[id];
+  currentTabIdx=newIdx;
+
+  // Bug4 fix: silently clear search without calling render()
+  if(id!=='upcoming'&&searchQ){
+    searchQ='';
+    const upL=U.filter(u=>!u.done&&u.nextDate>td()).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+    rUpcoming(upL);
+  }
+}
+
+/* ══ Bottom sheet ══════════════════════ */
+function openSheet(){
+  _sheetDateMode='today';
+  document.querySelectorAll('#date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val==='today'));
+  document.getElementById('date-custom-wrap').classList.remove('open');
+  document.getElementById('date-inp').value='';
+  updateSheetInfo();
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('sheet').classList.add('on');
+  setTimeout(()=>document.getElementById('inp').focus(),380);
+  haptic();
+}
+
+function closeSheet(){
+  const sh=document.getElementById('sheet');
+  document.getElementById('overlay').classList.remove('on');
+  sh.classList.remove('on');
+  sh.style.bottom=''; // B5: reset keyboard-push offset
+  document.getElementById('inp').blur();
+  document.getElementById('inp').classList.remove('shake');
+  _sheetDateMode='today';
+}
+
+(function(){
+  const sh=document.getElementById('sheet'); let sy=0;
+  sh.addEventListener('touchstart',e=>{ sy=e.touches[0].clientY; },{passive:true});
+  sh.addEventListener('touchend',e=>{ if(e.changedTouches[0].clientY-sy>70) closeSheet(); },{passive:true});
+})();
+
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',()=>{
+    const sh=document.getElementById('sheet');
+    if(!sh.classList.contains('on')) return;
+    const gap=window.innerHeight-window.visualViewport.height;
+    sh.style.bottom=gap>50?gap+'px':'';
+  });
+}
+
+/* ══ Toast ═════════════════════════════ */
+let _tt;
+function toast(iconHtml,msg){
+  const el=document.getElementById('toast');
+  // msg is always pre-escaped before calling toast
+  el.innerHTML=`<span style="opacity:.8;display:flex;flex-shrink:0">${iconHtml}</span><span>${msg}</span>`;
+  el.classList.add('on');
+  clearTimeout(_tt);
+  _tt=setTimeout(()=>el.classList.remove('on'),2600);
+}
+
+/* ══ Init ══════════════════════════════ */
+(function init(){
+  const d=new Date();
+  document.getElementById('nav-date').textContent=
+    `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
+  document.getElementById('inp').addEventListener('keydown',e=>{ if(e.key==='Enter') addUnit(); });
+  document.getElementById('date-inp').addEventListener('change',updateSheetInfo);
+  render();
+})();
+
+/* ══ PWA ═══════════════════════════════ */
+try {
+  const mf={
+    name:'復習マネージャー',short_name:'復習マネ',start_url:'.',display:'standalone',
+    background_color:'#2563EB',theme_color:'#2563EB',
+    icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3Cpath d='M28 22h32a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M34 42h32M34 54h22' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'}]
+  };
+  const bl=new Blob([JSON.stringify(mf)],{type:'application/manifest+json'});
+  const lk=document.createElement('link'); lk.rel='manifest'; lk.href=URL.createObjectURL(bl);
+  document.head.appendChild(lk);
+} catch(_){}
+
+if('serviceWorker' in navigator){
+  const sw=`const C='fk-v5';
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));return self.clients.claim();});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const n=fetch(e.request).then(rs=>{c.put(e.request,rs.clone());return rs;}).catch(()=>r);return r||n;})));});`;
+  try{navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});}catch(_){}
+}
+</script>
+</body>
+</html>
