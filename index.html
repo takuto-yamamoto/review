@@ -50,13 +50,17 @@ body{
 /* ══ App shell ═════════════════════════ */
 #app{
   position:fixed;
-  /* Use inset with explicit safe-area fallback for oldest iOS */
-  top:0;left:0;right:0;bottom:0;
+  top:0;left:0;right:0;
+  bottom:0;
+  /* In PWA, extend to include home indicator area */
   inset:0;
   display:flex;flex-direction:column;overflow:hidden;
-  /* Compositing layer for smoother backdrop-filter on scroll */
   -webkit-transform:translateZ(0);
   transform:translateZ(0);
+}
+body.pwa #app{
+  /* Extend app shell down by safe-bottom so tab-bar::after fills home indicator */
+  bottom:calc(-1 * var(--safe-bottom));
 }
 
 /* ══ Navbar ════════════════════════════ */
@@ -286,13 +290,20 @@ button,a,input,[role="button"]{touch-action:manipulation}
   backdrop-filter:saturate(180%) blur(20px);
   border-top:.5px solid var(--sep);
   display:flex;align-items:center;
-  padding-bottom:var(--safe-bottom);
+  height:var(--tab-h);
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
-  height:calc(var(--tab-h) + var(--safe-bottom));
   flex-shrink:0;z-index:50;
-  /* Prevent 1px gap and ensure it sits above content */
+  position:relative;
   transform:translateZ(0);
+}
+/* Fill the home indicator zone below the tab bar with the same bg */
+.tab-bar::after{
+  content:'';
+  position:absolute;
+  left:0;right:0;top:100%;
+  height:var(--safe-bottom);
+  background:rgba(255,255,255,.98);
 }
 .tab-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -1010,9 +1021,11 @@ function closeSnooze(){
   _snoozeId=null;
 }
 function applySnooze(days){
-  const u=U.find(x=>x.id===_snoozeId); if(!u){ closeSnooze(); return; }
+  if(!_snoozeId) return;                         // Bug3 fix: guard double-tap
+  const id = _snoozeId;
+  closeSnooze();                                 // clears _snoozeId immediately
+  const u=U.find(x=>x.id===id); if(!u) return;
   u.nextDate=addD(td(),days); save();
-  closeSnooze();
   haptic('medium');
   shrinkOut('w-'+u.id,()=>render());
   const label=days===1?'明日':days===7?'1週間後':`${days}日後`;
@@ -1023,6 +1036,9 @@ function snooze(id){ openSnooze(id); } // legacy alias
 
 function del(id){
   if(openWrap && openWrap.dataset && openWrap.dataset.id===id){
+    // Bug2 fix: snap card back before shrink so there's no transform glitch
+    const card = openWrap.querySelector('.card');
+    if(card){ card.style.transition='none'; card.style.transform=''; }
     openWrap._closeSwipe?.(); openWrap=null;
   }
   const idx=U.findIndex(x=>x.id===id); if(idx<0) return;
@@ -1515,7 +1531,7 @@ function cHtml(u){
     <div class="swipe-bg" onclick="del('${u.id}')">
       ${IC.trash}<span class="swipe-bg-lbl">削除</span>
     </div>
-    <div class="card ${over?'over':''} ${due?'due':''}" id="c-${u.id}">
+    <div class="card${over?' over':due?' due':''}" id="c-${u.id}">
       <div class="card-top">
         <div class="card-name">${esc(u.name)}</div>
         <button class="btn-edit" onclick="openEdit('${u.id}')" aria-label="編集">${IC.pencil}</button>
@@ -1534,8 +1550,23 @@ function cHtml(u){
 /* ── Search binding ── */
 function bindSearch(el){
   const inp=el.querySelector('#search-inp'); if(!inp) return;
-  if(searchQ){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
-  inp.addEventListener('input',e=>{ searchQ=e.target.value; render(); });
+  // Restore cursor position after re-render, but only when not composing (IME)
+  if(searchQ){
+    let _composing=false;
+    inp.addEventListener('compositionstart',()=>{ _composing=true; });
+    inp.addEventListener('compositionend',()=>{ _composing=false; });
+    // Only focus if no active IME session to avoid broken Japanese input
+    if(!_composing){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+  }
+  inp.addEventListener('input',e=>{
+    // Bug4 fix: skip render() mid-composition so IME candidates aren't interrupted
+    if(e.isComposing) return;
+    searchQ=e.target.value; render();
+  });
+  inp.addEventListener('compositionend',e=>{
+    // Trigger search after IME confirms the character
+    searchQ=e.target.value; render();
+  });
   inp.addEventListener('search',e=>{ searchQ=e.target.value; render(); });
   const clr=el.querySelector('#search-clear');
   if(clr) clr.addEventListener('click',()=>{
@@ -1648,16 +1679,12 @@ function toast(iconHtml,msg){
   // env(safe-area-inset-*) returns 0px in this PWA build due to meta/manifest config.
   // We compute insets from screen vs viewport measurements directly.
   if(isPWA){
-    const screenH = screen.height;   // physical screen logical pixels (844 on iPhone 16e)
-    const innerH  = window.innerHeight; // visible viewport (797)
-    const diff    = screenH - innerH;   // total hidden by OS chrome (47)
+    const screenH = screen.height;
+    const innerH  = window.innerHeight;
+    const screenDiff = screenH - innerH;   // renamed: avoid collision with global diff()
 
-    // On notched/home-indicator iPhones, diff = statusBar + homeIndicator.
-    // iPhone 16e (non-Dynamic-Island): statusBar ≈ 20pt scaled, homeIndicator ≈ 34pt.
-    // The system already offsets the bottom in standalone for the home indicator,
-    // so the entire diff is typically just the top status bar.
-    const topInset    = diff > 0 ? diff : 47; // fallback 47
-    const bottomInset = 34; // iPhone home indicator: constant 34pt on non-DI models
+    const topInset    = screenDiff > 0 ? screenDiff : 47;
+    const bottomInset = 34;
 
     document.documentElement.style.setProperty('--safe-top',    topInset    + 'px');
     document.documentElement.style.setProperty('--safe-bottom', bottomInset + 'px');
@@ -1685,7 +1712,7 @@ try {
 } catch(_){}
 
 if('serviceWorker' in navigator){
-  const sw=`const C='fk-v8';
+  const sw=`const C='fk-v10';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));return self.clients.claim();});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const n=fetch(e.request).then(rs=>{c.put(e.request,rs.clone());return rs;}).catch(()=>r);return r||n;})));});`;
