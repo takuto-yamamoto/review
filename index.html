@@ -1640,12 +1640,25 @@ function toast(iconHtml,msg){
 
 /* ══ Init ══════════════════════════════ */
 (function init(){
-  // PWA standalone detection: add 'pwa' class to body when running as installed app.
-  // In Safari browser, navigator.standalone is false → no padding-top on navbar.
-  // In PWA standalone mode it's true → safe-area-inset-top padding is applied via CSS.
+  // PWA standalone detection
   if(navigator.standalone === true){
     document.body.classList.add('pwa');
   }
+
+  // DEBUG: show safe area values on screen for 5 seconds
+  const dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:16px 20px;border-radius:12px;font-size:13px;z-index:9999;line-height:1.8;font-family:monospace;pointer-events:none';
+  const safe = (prop) => getComputedStyle(document.documentElement).getPropertyValue('--safe-'+prop).trim();
+  dbg.innerHTML = [
+    'standalone: ' + (navigator.standalone === true),
+    'safe-top: ' + safe('top'),
+    'safe-bottom: ' + safe('bottom'),
+    'innerH: ' + window.innerHeight,
+    'screen.h: ' + screen.height,
+    'tab-h: ' + getComputedStyle(document.querySelector('.tab-bar')).height,
+  ].join('<br>');
+  document.body.appendChild(dbg);
+  setTimeout(() => dbg.remove(), 8000);
 
   const d=new Date();
   document.getElementById('nav-date').textContent=
