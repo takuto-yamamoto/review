@@ -6,10 +6,14 @@
 <meta name="theme-color" content="#F2F2F7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- iPhone safe-area: viewport-fit=cover + black-translucent is for PWA standalone only.
+     In Safari browser the status bar sits outside the webview, so safe-area-inset-top
+     already equals 0; no extra padding needed. We detect standalone and add a class. -->
 <meta name="apple-mobile-web-app-title" content="復習マネ">
 <title>復習マネージャー</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 :root{
@@ -61,16 +65,21 @@ body{
   -webkit-backdrop-filter:saturate(180%) blur(20px);
   backdrop-filter:saturate(180%) blur(20px);
   border-bottom:.5px solid var(--sep);
-  padding-top:var(--safe-top);
+  /* Safe-area top padding: only in PWA standalone (body.pwa).
+     In Safari browser the status bar is outside the webview, so
+     env(safe-area-inset-top) returns 0 in Safari but ~47px in standalone. */
+  padding-top:0;
   flex-shrink:0;z-index:50;
-  /* Prevent 1px gap on Retina displays */
   transform:translateZ(0);
+}
+body.pwa .navbar{
+  padding-top:env(safe-area-inset-top,47px);
 }
 .nav-inner{padding:8px 20px 10px}
 .nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .nav-title{
-  font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;
-  color:var(--blue);letter-spacing:-.5px;line-height:1
+  font-family:'Zen Kaku Gothic New','Outfit',sans-serif;font-size:21px;font-weight:900;
+  color:var(--blue);letter-spacing:.5px;line-height:1
 }
 .nav-date{font-size:13px;color:var(--lbl2);font-variant-numeric:tabular-nums}
 .stat-row{display:flex;gap:6px;flex-wrap:wrap}
@@ -1195,10 +1204,14 @@ function undoDelete(){
   clearTimeout(_undoTimer);
   clearTimeout(_undoProgTimer);
   const {unit}=_undoStack; _undoStack=null;
-  // Fix4: re-find insertion point by date proximity instead of stale idx
-  // Insert before the first item whose nextDate is later than the restored unit's nextDate
-  const insertIdx = U.findIndex(u => u.nextDate > unit.nextDate && !u.done);
-  if(insertIdx === -1) U.push(unit); else U.splice(insertIdx, 0, unit);
+  if(unit.done){
+    // Completed units go back to the done list (append)
+    U.push(unit);
+  } else {
+    // Fix4: re-find insertion point by date proximity instead of stale idx
+    const insertIdx = U.findIndex(u => !u.done && u.nextDate > unit.nextDate);
+    if(insertIdx === -1) U.push(unit); else U.splice(insertIdx, 0, unit);
+  }
   save();
   document.getElementById('undo-bar').classList.remove('on');
   render();
@@ -1564,8 +1577,8 @@ function switchTab(btn){
   document.getElementById('nav-title').textContent=TABS[id];
   currentTabIdx=newIdx;
 
-  // Bug4 fix: silently clear search without calling render()
-  if(id!=='upcoming'&&searchQ){
+  // Bug4 fix: clear search state when leaving upcoming tab; re-render only upcoming panel
+  if(id!=='upcoming' && searchQ){
     searchQ='';
     const upL=U.filter(u=>!u.done&&u.nextDate>td()).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
     rUpcoming(upL);
@@ -1627,6 +1640,13 @@ function toast(iconHtml,msg){
 
 /* ══ Init ══════════════════════════════ */
 (function init(){
+  // PWA standalone detection: add 'pwa' class to body when running as installed app.
+  // In Safari browser, navigator.standalone is false → no padding-top on navbar.
+  // In PWA standalone mode it's true → safe-area-inset-top padding is applied via CSS.
+  if(navigator.standalone === true){
+    document.body.classList.add('pwa');
+  }
+
   const d=new Date();
   document.getElementById('nav-date').textContent=
     `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
