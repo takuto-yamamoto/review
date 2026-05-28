@@ -73,7 +73,7 @@ body{
   transform:translateZ(0);
 }
 body.pwa .navbar{
-  padding-top:env(safe-area-inset-top,47px);
+  padding-top:var(--safe-top);
 }
 .nav-inner{padding:8px 20px 10px}
 .nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
@@ -1641,24 +1641,27 @@ function toast(iconHtml,msg){
 /* ══ Init ══════════════════════════════ */
 (function init(){
   // PWA standalone detection
-  if(navigator.standalone === true){
-    document.body.classList.add('pwa');
-  }
+  const isPWA = navigator.standalone === true;
+  if(isPWA) document.body.classList.add('pwa');
 
-  // DEBUG: show safe area values on screen for 5 seconds
-  const dbg = document.createElement('div');
-  dbg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:16px 20px;border-radius:12px;font-size:13px;z-index:9999;line-height:1.8;font-family:monospace;pointer-events:none';
-  const safe = (prop) => getComputedStyle(document.documentElement).getPropertyValue('--safe-'+prop).trim();
-  dbg.innerHTML = [
-    'standalone: ' + (navigator.standalone === true),
-    'safe-top: ' + safe('top'),
-    'safe-bottom: ' + safe('bottom'),
-    'innerH: ' + window.innerHeight,
-    'screen.h: ' + screen.height,
-    'tab-h: ' + getComputedStyle(document.querySelector('.tab-bar')).height,
-  ].join('<br>');
-  document.body.appendChild(dbg);
-  setTimeout(() => dbg.remove(), 8000);
+  // Safe-area compensation.
+  // env(safe-area-inset-*) returns 0px in this PWA build due to meta/manifest config.
+  // We compute insets from screen vs viewport measurements directly.
+  if(isPWA){
+    const screenH = screen.height;   // physical screen logical pixels (844 on iPhone 16e)
+    const innerH  = window.innerHeight; // visible viewport (797)
+    const diff    = screenH - innerH;   // total hidden by OS chrome (47)
+
+    // On notched/home-indicator iPhones, diff = statusBar + homeIndicator.
+    // iPhone 16e (non-Dynamic-Island): statusBar ≈ 20pt scaled, homeIndicator ≈ 34pt.
+    // The system already offsets the bottom in standalone for the home indicator,
+    // so the entire diff is typically just the top status bar.
+    const topInset    = diff > 0 ? diff : 47; // fallback 47
+    const bottomInset = 34; // iPhone home indicator: constant 34pt on non-DI models
+
+    document.documentElement.style.setProperty('--safe-top',    topInset    + 'px');
+    document.documentElement.style.setProperty('--safe-bottom', bottomInset + 'px');
+  }
 
   const d=new Date();
   document.getElementById('nav-date').textContent=
@@ -1682,7 +1685,7 @@ try {
 } catch(_){}
 
 if('serviceWorker' in navigator){
-  const sw=`const C='fk-v7';
+  const sw=`const C='fk-v8';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));return self.clients.claim();});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const n=fetch(e.request).then(rs=>{c.put(e.request,rs.clone());return rs;}).catch(()=>r);return r||n;})));});`;
