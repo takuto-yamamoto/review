@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#2563EB">
+<meta name="theme-color" content="#F2F2F7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="復習マネ">
@@ -26,23 +26,45 @@
 }
 
 /* ══ Reset / Base ══════════════════════ */
-html,body{height:100%;overflow:hidden;background:var(--bg)}
+html{
+  height:100%;
+  /* Launch flash prevention: same as --bg */
+  background:#F2F2F7;
+}
 body{
+  /* -webkit-fill-available: more reliable than 100% in iOS PWA standalone */
+  height:100%;
+  min-height:-webkit-fill-available;
+  overflow:hidden;
+  background:var(--bg);
+  /* Prevent iOS rubber-band overscroll on body */
+  overscroll-behavior:none;
   font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;
   color:var(--lbl);-webkit-font-smoothing:antialiased;
 }
 
 /* ══ App shell ═════════════════════════ */
-#app{position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden}
+#app{
+  position:fixed;
+  /* Use inset with explicit safe-area fallback for oldest iOS */
+  top:0;left:0;right:0;bottom:0;
+  inset:0;
+  display:flex;flex-direction:column;overflow:hidden;
+  /* Compositing layer for smoother backdrop-filter on scroll */
+  -webkit-transform:translateZ(0);
+  transform:translateZ(0);
+}
 
 /* ══ Navbar ════════════════════════════ */
 .navbar{
-  background:rgba(242,242,247,.94);
+  background:rgba(242,242,247,.98);
   -webkit-backdrop-filter:saturate(180%) blur(20px);
   backdrop-filter:saturate(180%) blur(20px);
   border-bottom:.5px solid var(--sep);
   padding-top:var(--safe-top);
   flex-shrink:0;z-index:50;
+  /* Prevent 1px gap on Retina displays */
+  transform:translateZ(0);
 }
 .nav-inner{padding:8px 20px 10px}
 .nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
@@ -65,8 +87,12 @@ body{
 /* B6 fix: start panels as display:none with no transform (no mid-frame flash) */
 .panel{
   position:absolute;inset:0;overflow-y:auto;
-  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  overscroll-behavior-y:none; /* Prevent panel from triggering body bounce */
   display:none;
+  /* Ensure panels don't bleed behind blur layers */
+  will-change:scroll-position;
   padding:12px calc(16px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
 /* Animation applied via separate classes only when transitioning */
@@ -89,6 +115,9 @@ body{
   from{opacity:0;transform:translateX(-22px)}
   to{opacity:1;transform:translateX(0)}
 }
+
+/* ══ Touch: remove 300ms tap delay on all interactive elements ══ */
+button,a,input,[role="button"]{touch-action:manipulation}
 
 /* ══ Section label ═════════════════════ */
 .sec{
@@ -243,7 +272,7 @@ body{
 
 /* ══ Tab bar ═══════════════════════════ */
 .tab-bar{
-  background:rgba(255,255,255,.92);
+  background:rgba(255,255,255,.98);
   -webkit-backdrop-filter:saturate(180%) blur(20px);
   backdrop-filter:saturate(180%) blur(20px);
   border-top:.5px solid var(--sep);
@@ -252,7 +281,9 @@ body{
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
   height:calc(var(--tab-h) + var(--safe-bottom));
-  flex-shrink:0;z-index:50
+  flex-shrink:0;z-index:50;
+  /* Prevent 1px gap and ensure it sits above content */
+  transform:translateZ(0);
 }
 .tab-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -322,8 +353,10 @@ body{
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
   display:flex;flex-direction:column;max-height:92vh;
+  /* Ensure sheet renders above everything in PWA */
+  -webkit-transform:translateY(110%);
 }
-.sheet.on{transform:translateY(0)}
+.sheet.on{transform:translateY(0);-webkit-transform:translateY(0)}
 .sheet-pull{width:40px;height:5px;background:var(--lbl3);border-radius:3px;margin:12px auto 4px;flex-shrink:0}
 .sheet-body{
   padding:8px 20px 20px;
@@ -826,7 +859,8 @@ function getStreak(){
 }
 
 
-let adjDismissed = false;
+const ADJ_DISMISSED_KEY = 'fukushu-adj-dismissed';
+let adjDismissed = (() => { try { return localStorage.getItem(ADJ_DISMISSED_KEY) === '1'; } catch { return false; } })();
 let searchQ = '';
 
 /* ══ Sheet date state ══════════════════ */
@@ -890,6 +924,7 @@ function addUnit(){
   U.unshift({id:Date.now().toString(),name,addedDate:learnDate,step:0,nextDate:firstNext,done:false,isNew:true});
   save(); inp.value=''; closeSheet();
   adjDismissed=false;
+  try { localStorage.removeItem(ADJ_DISMISSED_KEY); } catch(_){}
   render();
   // B1 fix: esc(name) prevents XSS in toast innerHTML
   const suffix = learnDate!==td() ? `（${fmtShortText(learnDate)}）` : '';
@@ -902,16 +937,19 @@ const _completing = new Set();
 function complete(id){
   if(_completing.has(id)) return;
   _completing.add(id);
-  const u=U.find(x=>x.id===id); if(!u){ _completing.delete(id); return; }
+  // Safety: clear from set after 3s even if callbacks fail
+  const _safetyTimer = setTimeout(()=>_completing.delete(id), 3000);
+  const u=U.find(x=>x.id===id); if(!u){ _completing.delete(id); clearTimeout(_safetyTimer); return; }
   const card=document.getElementById('c-'+id);
   if(card) card.classList.add('flash');
   haptic('medium');
   u.step++;
   if(u.step>=MAX_STEP){
     u.done=true;
-    u.completedAt = Date.now(); // for sort in done tab
+    u.completedAt = Date.now();
     bumpStreak();
     save();
+    clearTimeout(_safetyTimer);
     shrinkOut('w-'+id,()=>{ render(); _completing.delete(id); });
     // P5: celebration for final completion
     setTimeout(()=>celebrate(u.name), 320);
@@ -922,6 +960,7 @@ function complete(id){
     save();
     // B1 fix: esc names in toast
     const msg=esc(STEPS[u.step-1])+'完了！次回: '+fmtShortText(u.nextDate);
+    clearTimeout(_safetyTimer);
     if(u.nextDate>td()){
       setTimeout(()=>shrinkOut('w-'+id,()=>{ render(); _completing.delete(id); }),520);
     } else {
@@ -1037,7 +1076,10 @@ function analyzeLoad(){
 
 function applySmartAdjust(moves){
   moves.forEach(({id,to})=>{ const u=U.find(x=>x.id===id); if(u) u.nextDate=to; });
-  save(); adjDismissed=true; render();
+  save();
+  adjDismissed=true;
+  try { localStorage.setItem(ADJ_DISMISSED_KEY,'1'); } catch(_){}
+  render();
   toast(IC.check, moves.length+'件のタスクを分散しました');
   haptic('medium');
 }
@@ -1049,6 +1091,7 @@ function toggleAdjBanner(){
 
 function dismissAdj(){
   adjDismissed=true;
+  try { localStorage.setItem(ADJ_DISMISSED_KEY,'1'); } catch(_){}
   const b=document.getElementById('adj-banner'); if(!b) return;
   // Correct order: read height → set transition:none → lock → rAF → animate
   const h=b.offsetHeight;
@@ -1561,8 +1604,12 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize',()=>{
     const sh=document.getElementById('sheet');
     if(!sh.classList.contains('on')) return;
-    const gap=window.innerHeight-window.visualViewport.height;
-    sh.style.bottom=gap>50?gap+'px':'';
+    // PWA standalone: compute gap from visualViewport vs window
+    const windowH = window.innerHeight;
+    const vpH = window.visualViewport.height;
+    const gap = windowH - vpH;
+    // Only push if keyboard is clearly visible (gap > 100px to avoid false triggers)
+    sh.style.bottom = gap > 100 ? gap + 'px' : '';
   });
 }
 
@@ -1591,7 +1638,8 @@ function toast(iconHtml,msg){
 try {
   const mf={
     name:'復習マネージャー',short_name:'復習マネ',start_url:'.',display:'standalone',
-    background_color:'#2563EB',theme_color:'#2563EB',
+    orientation:'portrait',
+    background_color:'#F2F2F7',theme_color:'#F2F2F7',
     icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3Cpath d='M28 22h32a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M34 42h32M34 54h22' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'}]
   };
   const bl=new Blob([JSON.stringify(mf)],{type:'application/manifest+json'});
