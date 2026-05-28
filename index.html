@@ -303,7 +303,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .tbadge.h{display:none}
 .tab-fab{
-  flex:none;width:56px;display:flex;align-items:center;justify-content:center;
+  /* flex:1 to match tab-btn widths — ensures perfect 4-column equal spacing */
+  flex:1;display:flex;align-items:center;justify-content:center;
   background:none;border:none;cursor:pointer;padding:0;min-height:44px
 }
 .fab-disc{
@@ -1648,7 +1649,7 @@ try {
 } catch(_){}
 
 if('serviceWorker' in navigator){
-  const sw=`const C='fk-v5';
+  const sw=`const C='fk-v7';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));return self.clients.claim();});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const n=fetch(e.request).then(rs=>{c.put(e.request,rs.clone());return rs;}).catch(()=>r);return r||n;})));});`;
