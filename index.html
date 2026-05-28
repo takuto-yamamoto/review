@@ -19,8 +19,10 @@
   --lbl:#000;--lbl2:rgba(60,60,67,.6);--lbl3:rgba(60,60,67,.3);
   --sep:rgba(60,60,67,.15);--fill:rgba(118,118,128,.12);
   --tab-h:49px;--r:14px;
-  --safe-bottom:env(safe-area-inset-bottom);
-  --safe-top:env(safe-area-inset-top);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
 }
 
 /* ══ Reset / Base ══════════════════════ */
@@ -42,13 +44,13 @@ body{
   padding-top:var(--safe-top);
   flex-shrink:0;z-index:50;
 }
-.nav-inner{padding:10px 20px 12px}
-.nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nav-inner{padding:8px 20px 10px}
+.nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .nav-title{
-  font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;
+  font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;
   color:var(--blue);letter-spacing:-.5px;line-height:1
 }
-.nav-date{font-size:13px;color:var(--lbl2)}
+.nav-date{font-size:13px;color:var(--lbl2);font-variant-numeric:tabular-nums}
 .stat-row{display:flex;gap:6px;flex-wrap:wrap}
 .chip{
   background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:100px;
@@ -65,7 +67,7 @@ body{
   position:absolute;inset:0;overflow-y:auto;
   -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   display:none;
-  padding:16px 16px calc(28px + var(--safe-bottom));
+  padding:12px calc(16px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
 /* Animation applied via separate classes only when transitioning */
 .panel.slide-in{
@@ -158,7 +160,7 @@ body{
 
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px}
 .card-name{
-  font-size:17px;font-weight:600;color:var(--lbl);line-height:1.35;flex:1;
+  font-size:16px;font-weight:600;color:var(--lbl);line-height:1.4;flex:1;
   word-break:break-word;overflow-wrap:break-word
 }
 .pill{
@@ -169,6 +171,10 @@ body{
 .p1{background:#DBEAFE;color:#1E40AF}
 .p2{background:#D1FAE5;color:#065F46}
 .p3{background:#EDE9FE;color:#5B21B6}
+.p4{background:#FFE4E6;color:#9F1239}
+.p5{background:#ECFDF5;color:#064E3B}
+.p6{background:#FFF7ED;color:#7C2D12}
+.p7{background:#F0F9FF;color:#0C4A6E}
 
 .card-when{
   font-size:13px;color:var(--lbl2);margin-bottom:10px;
@@ -243,6 +249,8 @@ body{
   border-top:.5px solid var(--sep);
   display:flex;align-items:center;
   padding-bottom:var(--safe-bottom);
+  padding-left:var(--safe-left);
+  padding-right:var(--safe-right);
   height:calc(var(--tab-h) + var(--safe-bottom));
   flex-shrink:0;z-index:50
 }
@@ -253,7 +261,7 @@ body{
   min-height:44px;padding:4px 0;
   transition:color .15s;position:relative
 }
-.tab-lbl{font-size:10px;font-weight:500;letter-spacing:.15px;line-height:1}
+.tab-lbl{font-size:10px;font-weight:600;letter-spacing:.1px;line-height:1}
 .tab-btn.on{color:var(--blue)}
 .tbadge{
   position:absolute;top:2px;left:calc(50% + 7px);
@@ -310,15 +318,15 @@ body{
   background:var(--card);border-radius:20px 20px 0 0;
   transform:translateY(110%);
   transition:transform .38s cubic-bezier(.32,.72,0,1);
-  /* B4 fix: explicit safe-area padding on the sheet container */
   padding-bottom:var(--safe-bottom);
-  /* U3 fix: allow sheet-body to scroll on small screens */
-  display:flex;flex-direction:column;max-height:90vh;
+  padding-left:var(--safe-left);
+  padding-right:var(--safe-right);
+  display:flex;flex-direction:column;max-height:92vh;
 }
 .sheet.on{transform:translateY(0)}
-.sheet-pull{width:36px;height:4px;background:var(--lbl3);border-radius:3px;margin:10px auto 6px;flex-shrink:0}
+.sheet-pull{width:40px;height:5px;background:var(--lbl3);border-radius:3px;margin:12px auto 4px;flex-shrink:0}
 .sheet-body{
-  padding:10px 20px 20px;
+  padding:8px 20px 20px;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
   flex:1;min-height:0
 }
@@ -370,11 +378,11 @@ body{
 /* ══ Toast ═════════════════════════════ */
 .toast{
   position:fixed;
-  bottom:calc(var(--tab-h) + var(--safe-bottom) + 14px);left:50%;
+  bottom:calc(var(--tab-h) + var(--safe-bottom) + 16px);left:50%;
   transform:translateX(-50%) translateY(16px);
-  background:rgba(28,28,30,.9);
+  background:rgba(28,28,30,.92);
   -webkit-backdrop-filter:saturate(180%) blur(16px);backdrop-filter:saturate(180%) blur(16px);
-  color:#fff;padding:10px 20px;border-radius:100px;
+  color:#fff;padding:10px 18px;border-radius:100px;
   font-size:14px;font-weight:500;z-index:999;
   opacity:0;transition:opacity .2s,transform .28s cubic-bezier(.34,1.56,.64,1);
   pointer-events:none;display:flex;align-items:center;gap:8px;
@@ -399,9 +407,9 @@ body{
 .card.over{ background:linear-gradient(to right, #FFF1F0 0%, #fff 40%); }
 
 /* ══ Step dots (replaces thin progress bar) ═ */
-.step-dots{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.step-dots{display:flex;align-items:center;gap:5px;margin-bottom:12px}
 .step-dot{
-  width:9px;height:9px;border-radius:50%;background:var(--fill);
+  width:8px;height:8px;border-radius:50%;background:var(--fill);
   transition:background .2s,transform .15s;flex-shrink:0
 }
 .step-dot.done{background:var(--blue)}
@@ -438,7 +446,7 @@ body{
 .snooze-pick-box{
   position:relative;width:100%;background:var(--card);
   border-radius:20px 20px 0 0;
-  padding:0 16px calc(16px + var(--safe-bottom));
+  padding:0 calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
   transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1)
 }
 .snooze-pick.on .snooze-pick-box{transform:translateY(0)}
@@ -513,7 +521,8 @@ body{
 .edit-modal.on .edit-modal-bg{background:rgba(0,0,0,.4)}
 .edit-modal-box{
   position:relative;width:100%;background:var(--card);
-  border-radius:20px 20px 0 0;padding:16px 20px calc(20px + var(--safe-bottom));
+  border-radius:20px 20px 0 0;
+  padding:16px calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
   transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1);
 }
 .edit-modal.on .edit-modal-box{transform:translateY(0)}
@@ -533,7 +542,7 @@ body{
 /* ══ Undo bar ══════════════════════════ */
 .undo-bar{
   position:fixed;bottom:calc(var(--tab-h) + var(--safe-bottom) + 10px);
-  left:16px;right:16px;
+  left:calc(16px + var(--safe-left));right:calc(16px + var(--safe-right));
   background:rgba(28,28,30,.96);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
   border-radius:14px;padding:12px 16px;
@@ -710,19 +719,38 @@ const IC = {
 /* ══════════════════════════════════════════
    CONSTANTS & DATA
 ══════════════════════════════════════════ */
-const STEPS = ['1回目','2回目','3回目','4回目'];
-const INTS  = [1,7,14,28];
-const KEY   = 'fukushu-v5';
+// 復習スケジュール：1日後→7日後→14日後→28日後→60日後→90日後→120日後→180日後（約半年）
+const STEPS = ['1回目','2回目','3回目','4回目','5回目','6回目','7回目','8回目'];
+const INTS  = [1,7,14,28,60,90,120,180];
+const MAX_STEP = STEPS.length; // 8
+const KEY   = 'fukushu-v6';
 const DOW   = '日月火水木金土';
 const TABS  = { today:'今日のタスク', upcoming:'予定一覧', done:'完了済み' };
 
-// Migrate old key if exists
-(()=>{ try { const old = localStorage.getItem('fukushu-v4'); if(old && !localStorage.getItem(KEY)) localStorage.setItem(KEY, old); } catch(_){} })();
+// 旧バージョンからのデータ移行（v4→v6, v5→v6）
+(()=>{ try {
+  if(localStorage.getItem(KEY)) return; // v6データがあればスキップ
+  const src = localStorage.getItem('fukushu-v5') || localStorage.getItem('fukushu-v4');
+  if(src) localStorage.setItem(KEY, src);
+} catch(_){} })();
 
 let U = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } })();
+
 const save  = () => localStorage.setItem(KEY, JSON.stringify(U));
-const td    = () => new Date().toISOString().slice(0,10);
-const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+// ローカル日時を使う（UTC基準だとJSTでは日付がズレる）
+const td    = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const addD  = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+// データ修復：step=0 の nextDate が addedDate と同日（学習当日）になっているものを翌日に修正
+(()=>{
+  let fixed=false;
+  U.forEach(u=>{
+    if(!u.done && u.step===0 && u.nextDate<=u.addedDate){
+      u.nextDate=addD(u.addedDate,1); fixed=true;
+    }
+  });
+  if(fixed) localStorage.setItem(KEY,JSON.stringify(U));
+})();
 const diff  = s => Math.round((new Date(s+'T00:00:00')-new Date(td()+'T00:00:00'))/86400000);
 const haptic = (t='light') => { try { if(navigator.vibrate) navigator.vibrate(t==='medium'?8:t==='heavy'?[10,4,10]:4); } catch(_){} };
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -836,6 +864,7 @@ function selectDateSeg(btn){
 }
 
 function updateSheetInfo(){
+  if(!document.getElementById('sheet').classList.contains('on')) return;
   const date=getSheetDate(), first=addD(date,INTS[0]);
   document.getElementById('sheet-info').innerHTML=
     `<div class="sheet-info-row">${IC.calendar} 学習日：${fmtFull(date)}</div>
@@ -855,7 +884,10 @@ function addUnit(){
     haptic('medium'); inp.focus(); return;
   }
   const learnDate=getSheetDate();
-  U.unshift({id:Date.now().toString(),name,addedDate:learnDate,step:0,nextDate:addD(learnDate,INTS[0]),done:false,isNew:true});
+  // 1回目の復習は学習日の翌日。安全策：nextDate が learnDate 以前にはならないことを保証
+  const rawNext=addD(learnDate,INTS[0]);
+  const firstNext=rawNext>learnDate?rawNext:addD(learnDate,1);
+  U.unshift({id:Date.now().toString(),name,addedDate:learnDate,step:0,nextDate:firstNext,done:false,isNew:true});
   save(); inp.value=''; closeSheet();
   adjDismissed=false;
   render();
@@ -875,7 +907,7 @@ function complete(id){
   if(card) card.classList.add('flash');
   haptic('medium');
   u.step++;
-  if(u.step>=4){
+  if(u.step>=MAX_STEP){
     u.done=true;
     u.completedAt = Date.now(); // for sort in done tab
     bumpStreak();
@@ -1148,7 +1180,7 @@ function celebrate(name){
     el.addEventListener('animationend',()=>el.remove(),{once:true});
     setTimeout(()=>{ if(el.parentNode) el.remove(); },(dur+delay+0.5)*1000);
   }
-  document.getElementById('celebrate-sub').textContent=`「${name}」の全4回復習完了！`;
+  document.getElementById('celebrate-sub').textContent=`「${name}」の全${MAX_STEP}回復習完了！`;
   const box=document.getElementById('celebrate-box');
   box.classList.add('on');
   setTimeout(()=>box.classList.remove('on'),2400);
@@ -1389,7 +1421,7 @@ function rDone(list){
     el.innerHTML=`<div class="empty">
       <div class="empty-icon" style="background:#D1FAE5">${IC.trophy}</div>
       <h3>完了した単元はありません</h3>
-      <p>4回の復習を終えた単元が<br>ここに表示されます</p>
+      <p>${MAX_STEP}回の復習を終えた単元が<br>ここに表示されます</p>
     </div>`; return;
   }
   let html=`<div class="sec sec-first">完了した単元（${list.length}）</div>`;
@@ -1398,7 +1430,7 @@ function rDone(list){
       <div class="done-icon">${IC.checkGreen}</div>
       <div class="done-txt">
         <div class="done-name">${esc(u.name)}</div>
-        <div class="done-meta">${IC.calendar} ${fmtFull(u.addedDate)}　全4回完了</div>
+        <div class="done-meta">${IC.calendar} ${fmtFull(u.addedDate)}　全${MAX_STEP}回完了</div>
       </div>
       <button class="done-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
     </div>`).join('');
@@ -1408,7 +1440,7 @@ function rDone(list){
 /* ── Card HTML ── */
 function cHtml(u){
   const d=diff(u.nextDate), over=d<0, due=d===0;
-  const pct=(u.step/4)*100;
+  const pct=(u.step/MAX_STEP)*100;
   const when=over
     ?`<div class="card-when over">${IC.alert} ${Math.abs(d)}日超過中</div>`
     :due
@@ -1416,11 +1448,11 @@ function cHtml(u){
     :`<div class="card-when">${IC.calendar} ${fmtShort(u.nextDate)}<span class="card-when-days">· ${d}日後</span></div>`;
   // B3 fix: only add 'new-card' class when unit is freshly added (u.isNew flag)
   const newCls = u.isNew ? ' new-card' : '';
-  // Step dots — much clearer than 3px bar at a glance
+  // Step dots
   const dotsHtml = STEPS.map((_,i)=>{
     const cls = i < u.step ? 'done' : i === u.step ? 'active' : '';
     return `<span class="step-dot ${cls}"></span>`;
-  }).join('') + `<span class="step-dot-lbl${u.step<4?' active':''}">${u.step<4?STEPS[u.step]:'完了'}</span>`;
+  }).join('') + `<span class="step-dot-lbl${u.step<MAX_STEP?' active':''}">${u.step<MAX_STEP?STEPS[u.step]:'完了'}</span>`;
 
   return `<div class="cw${newCls}" id="w-${u.id}" data-id="${u.id}">
     <div class="swipe-bg" onclick="del('${u.id}')">
@@ -1471,7 +1503,9 @@ function switchTab(btn){
       void p.offsetWidth;
       p.classList.add(newIdx>=currentTabIdx?'slide-in':'slide-back');
       // Fix8: fallback timeout in case animationend doesn't fire (Safari background tab)
+      let _ended=false;
       const onEnd=()=>{
+        if(_ended) return; _ended=true;
         p.classList.remove('slide-in','slide-back');
         p.classList.add('visible');
         p.removeEventListener('animationend',onEnd);
@@ -1500,9 +1534,9 @@ function openSheet(){
   document.querySelectorAll('#date-seg .seg-btn').forEach(b=>b.classList.toggle('on',b.dataset.val==='today'));
   document.getElementById('date-custom-wrap').classList.remove('open');
   document.getElementById('date-inp').value='';
-  updateSheetInfo();
   document.getElementById('overlay').classList.add('on');
   document.getElementById('sheet').classList.add('on');
+  updateSheetInfo(); // after .on so the guard check passes
   setTimeout(()=>document.getElementById('inp').focus(),380);
   haptic();
 }
