@@ -108,7 +108,7 @@ body.pwa .navbar{
   display:none;
   /* Ensure panels don't bleed behind blur layers */
   will-change:scroll-position;
-  padding:12px calc(16px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(16px + var(--safe-left));
+  padding:12px calc(16px + var(--safe-right)) calc(96px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
 /* Animation applied via separate classes only when transitioning */
 .panel.slide-in{
@@ -299,19 +299,23 @@ button,a,input,[role="button"]{touch-action:manipulation}
   display:flex;align-items:center;justify-content:center;padding:0 3px
 }
 .tbadge.h{display:none}
-.tab-fab{
-  /* flex:1 to match tab-btn widths — ensures perfect 4-column equal spacing */
-  flex:1;display:flex;align-items:center;justify-content:center;
-  background:none;border:none;cursor:pointer;padding:0;min-height:44px
-}
-.fab-disc{
-  width:52px;height:52px;border-radius:50%;
+/* ══ Floating FAB (add button) ══════════ */
+.float-fab{
+  position:fixed;
+  right:calc(20px + var(--safe-right));
+  bottom:calc(var(--tab-h) + var(--safe-bottom) + 14px);
+  z-index:55;
+  width:56px;height:56px;border-radius:50%;
   background:linear-gradient(145deg,#3B82F6,#1D4ED8);
+  border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 18px rgba(37,99,235,.45),0 1px 4px rgba(37,99,235,.3);
-  transition:transform .12s,box-shadow .12s
+  box-shadow:0 4px 20px rgba(37,99,235,.50),0 1px 6px rgba(37,99,235,.3);
+  transition:transform .12s,box-shadow .12s,opacity .2s;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
 }
-.tab-fab:active .fab-disc{transform:scale(.88);box-shadow:0 2px 8px rgba(37,99,235,.25)}
+.float-fab:active{transform:scale(.88);box-shadow:0 2px 10px rgba(37,99,235,.28)}
+.float-fab.hidden{opacity:0;pointer-events:none;transform:scale(.8)}
 
 /* ══ Search bar ════════════════════════ */
 .search-wrap{
@@ -413,7 +417,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 /* ══ Toast ═════════════════════════════ */
 .toast{
   position:fixed;
-  bottom:calc(var(--tab-h) + var(--safe-bottom) + 16px);left:50%;
+  bottom:calc(var(--tab-h) + var(--safe-bottom) + 86px);left:50%;
   transform:translateX(-50%) translateY(16px);
   background:rgba(28,28,30,.92);
   -webkit-backdrop-filter:saturate(180%) blur(16px);backdrop-filter:saturate(180%) blur(16px);
@@ -576,7 +580,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 
 /* ══ Undo bar ══════════════════════════ */
 .undo-bar{
-  position:fixed;bottom:calc(var(--tab-h) + var(--safe-bottom) + 10px);
+  position:fixed;bottom:calc(var(--tab-h) + var(--safe-bottom) + 86px);
   left:calc(16px + var(--safe-left));right:calc(16px + var(--safe-right));
   background:rgba(28,28,30,.96);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
@@ -873,17 +877,18 @@ button,a,input,[role="button"]{touch-action:manipulation}
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
       <span class="tab-lbl">予定</span>
     </button>
-    <button class="tab-fab" onclick="openSheet()" aria-label="単元を追加">
-      <div class="fab-disc">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-    </button>
     <button class="tab-btn" data-tab="done" data-idx="2" onclick="switchTab(this)">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
       <span class="tab-lbl">実績</span>
     </button>
   </div>
+
 </div>
+
+<!-- Floating add button (always visible, above tab bar) -->
+<button class="float-fab" onclick="openSheet()" aria-label="単元を追加">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
 
 <!-- Overlay -->
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
@@ -1020,12 +1025,14 @@ function openTagMgr(){
   renderTagMgr();
   document.getElementById('tag-overlay').classList.add('on');
   document.getElementById('tag-mgr-sheet').classList.add('on');
+  setFabHidden(true);
   haptic();
 }
 function closeTagMgr(){
   document.getElementById('tag-overlay').classList.remove('on');
   document.getElementById('tag-mgr-sheet').classList.remove('on');
   _tagEditingId = null;
+  setFabHidden(false);
   renderSheetTagSel();
   renderEditTagSel();
   render();
@@ -1389,10 +1396,12 @@ function openSnooze(id){
     </button>`;
   }).join('');
   document.getElementById('snooze-pick').classList.add('on');
+  setFabHidden(true);
   haptic();
 }
 function closeSnooze(){
   document.getElementById('snooze-pick').classList.remove('on');
+  setFabHidden(false);
   _snoozeId=null;
 }
 function applySnooze(days){
@@ -1550,6 +1559,7 @@ function openEdit(id){
   _editTags=[...(U.find(x=>x.id===id)?.tags||[])];
   renderEditTagSel();
   document.getElementById('edit-modal').classList.add('on');
+  setFabHidden(true);
   setTimeout(()=>{ inp.focus(); inp.select(); },300);
   haptic();
 }
@@ -1558,6 +1568,7 @@ function closeEdit(){
   document.getElementById('edit-inp').blur();
   document.getElementById('edit-modal').classList.remove('on');
   _editId=null;
+  setFabHidden(false);
 }
 function saveEdit(){
   const name=document.getElementById('edit-inp').value.trim();
@@ -1800,16 +1811,17 @@ function render(){
 /* ── Today panel ── */
 function rToday(list, hasActive){
   const el=document.getElementById('p-today');
+  const bannerHtml = backupBannerHtml();
   if(!list.length){
     // Different state: tasks exist but all done today vs truly empty app
     if(hasActive){
-      el.innerHTML=`
+      el.innerHTML=bannerHtml+`
         <div class="hero all-done">
           <div class="hero-msg">今日はお疲れさまです！</div>
           <div class="hero-sub" style="margin-top:6px">「予定」タブで次のスケジュールを確認しましょう</div>
         </div>`;
     } else {
-      el.innerHTML=`
+      el.innerHTML=bannerHtml+`
         <div class="hero">
           <div class="hero-msg">単元を追加しましょう</div>
           <div class="hero-sub" style="margin-top:6px">＋ボタンから最初の単元を登録できます</div>
@@ -1826,7 +1838,7 @@ function rToday(list, hasActive){
   const dueToday = list.filter(u=>diff(u.nextDate)===0);
   const over = overdue.length;
   const sub = over>0 ? `うち <b>${over}</b> 件が期限超過` : `全件、今日が期限です`;
-  let html=`
+  let html=bannerHtml+`
     <div class="hero">
       <div class="hero-msg">${list.length} 件の復習があります</div>
       <div class="hero-sub" style="margin-top:6px">${sub}</div>
@@ -2178,6 +2190,22 @@ function switchTab(btn){
   }
 }
 
+/* ══ FAB visibility helper ═════════════ */
+function setFabHidden(hidden){
+  // If trying to show FAB, first confirm no other overlay is still open
+  if(!hidden){
+    const anyOpen =
+      document.getElementById('sheet')?.classList.contains('on') ||
+      document.getElementById('tag-mgr-sheet')?.classList.contains('on') ||
+      document.getElementById('backup-sheet')?.classList.contains('on') ||
+      document.getElementById('edit-modal')?.classList.contains('on') ||
+      document.getElementById('snooze-pick')?.classList.contains('on');
+    if(anyOpen) return; // keep hidden
+  }
+  const fab=document.querySelector('.float-fab');
+  if(fab) fab.classList.toggle('hidden', hidden);
+}
+
 /* ══ Bottom sheet ══════════════════════ */
 function openSheet(){
   _sheetDateMode='today';
@@ -2186,6 +2214,7 @@ function openSheet(){
   document.getElementById('date-inp').value='';
   document.getElementById('overlay').classList.add('on');
   document.getElementById('sheet').classList.add('on');
+  setFabHidden(true);
   updateSheetInfo(); // after .on so the guard check passes
   _sheetTags=[];
   setTimeout(()=>{ document.getElementById('inp').focus(); renderSheetTagSel(); },50);
@@ -2200,6 +2229,7 @@ function closeSheet(){
   document.getElementById('inp').blur();
   document.getElementById('inp').classList.remove('shake');
   _sheetDateMode='today';
+  setFabHidden(false);
 }
 
 (function(){
@@ -2253,6 +2283,9 @@ function daysSinceBackup(){
   return Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
 }
 
+/* Backup reminder state — survives render() calls */
+let _backupBannerDays = null; // null = hidden, number = show with this days value
+
 function checkBackupReminder(){
   try {
     const reminded = localStorage.getItem(BACKUP_REMINDED_KEY);
@@ -2260,47 +2293,44 @@ function checkBackupReminder(){
     const days = daysSinceBackup();
     if(days < BACKUP_REMIND_DAYS) return;
     localStorage.setItem(BACKUP_REMINDED_KEY, td());
-    showBackupReminder(days);
+    _backupBannerDays = days;
+    render(); // re-render today panel to include banner
   } catch {}
 }
 
-function showBackupReminder(days){
+function backupBannerHtml(){
+  if(_backupBannerDays === null) return '';
+  const days = _backupBannerDays;
   const daysText = days === Infinity ? 'まだバックアップしていません' : `最後のバックアップから ${days} 日経過しています`;
-  const banner = document.createElement('div');
-  banner.className = 'backup-reminder';
-  banner.id = 'backup-reminder-banner';
-  banner.innerHTML = `
+  return `<div class="backup-reminder" id="backup-reminder-banner"
+    onclick="if(!event.target.closest('.backup-reminder-close')){dismissBackupReminder(event);openBackupSheet();}">
     <div class="backup-reminder-icon">💾</div>
     <div class="backup-reminder-body">
       <div class="backup-reminder-ttl">バックアップを推奨します</div>
       <div class="backup-reminder-sub">${daysText}。タップしてデータを保存しませんか？</div>
     </div>
     <button class="backup-reminder-close" onclick="dismissBackupReminder(event)" aria-label="閉じる">✕</button>
-  `;
-  banner.addEventListener('click', e => {
-    if(e.target.closest('.backup-reminder-close')) return;
-    dismissBackupReminder(e);
-    openBackupSheet();
-  });
-  const panel = document.querySelector('.panel.visible');
-  if(panel) panel.prepend(banner);
+  </div>`;
 }
 
 function dismissBackupReminder(e){
   if(e) e.stopPropagation();
+  _backupBannerDays = null;
   const el = document.getElementById('backup-reminder-banner');
-  if(el){ el.style.opacity='0'; el.style.transition='opacity .2s'; setTimeout(()=>el.remove(), 200); }
+  if(el){ el.style.opacity='0'; el.style.transition='opacity .2s'; setTimeout(()=>render(), 220); }
 }
 
 function openBackupSheet(){
   updateBackupLastText();
   document.getElementById('backup-overlay').classList.add('on');
   document.getElementById('backup-sheet').classList.add('on');
+  setFabHidden(true);
   haptic();
 }
 function closeBackupSheet(){
   document.getElementById('backup-overlay').classList.remove('on');
   document.getElementById('backup-sheet').classList.remove('on');
+  setFabHidden(false);
 }
 function updateBackupLastText(){
   const last = getLastBackupDate();
@@ -2337,8 +2367,8 @@ function doExport(){
     setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
     setLastBackupDate();
     updateBackupLastText();
-    const banner = document.getElementById('backup-reminder-banner');
-    if(banner) banner.remove();
+    _backupBannerDays = null;
+    render(); // remove banner from today panel
     toast(IC.checkCircle, 'バックアップを保存しました');
     haptic('medium');
   } catch { toast(IC.alert, 'エクスポートに失敗しました'); }
