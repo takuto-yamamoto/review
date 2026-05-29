@@ -52,18 +52,12 @@ body{
 /* ══ App shell ═════════════════════════ */
 #app{
   position:fixed;
-  top:0;left:0;right:0;
-  bottom:0;
-  /* In PWA, extend to include home indicator area */
   inset:0;
   display:flex;flex-direction:column;overflow:hidden;
   -webkit-transform:translateZ(0);
   transform:translateZ(0);
 }
-body.pwa #app{
-  /* Extend app shell down by safe-bottom so tab-bar::after fills home indicator */
-  bottom:calc(-1 * var(--safe-bottom));
-}
+/* PWA: do NOT extend #app below safe-bottom — tab bar handles its own inset */
 
 /* ══ Navbar ════════════════════════════ */
 .navbar{
@@ -108,7 +102,7 @@ body.pwa .navbar{
   display:none;
   /* Ensure panels don't bleed behind blur layers */
   will-change:scroll-position;
-  padding:12px calc(16px + var(--safe-right)) calc(96px + var(--safe-bottom)) calc(16px + var(--safe-left));
+  padding:12px calc(16px + var(--safe-right)) calc(124px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
 /* Animation applied via separate classes only when transitioning */
 .panel.slide-in{
@@ -267,21 +261,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
   backdrop-filter:saturate(200%) blur(24px);
   border-top:.5px solid rgba(60,60,67,.1);
   display:flex;align-items:center;
-  height:var(--tab-h);
+  height:calc(var(--tab-h) + var(--safe-bottom));
+  padding-bottom:var(--safe-bottom);
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
   flex-shrink:0;z-index:50;
   position:relative;
   transform:translateZ(0);
 }
-/* Fill the home indicator zone below the tab bar with the same bg */
-.tab-bar::after{
-  content:'';
-  position:absolute;
-  left:0;right:0;top:100%;
-  height:var(--safe-bottom);
-  background:rgba(252,252,255,.97);
-}
+/* ::after no longer needed — padding-bottom handles the home indicator zone */
+.tab-bar::after{ display:none; }
 .tab-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:3px;background:none;border:none;cursor:pointer;color:var(--lbl3);
@@ -1857,7 +1846,7 @@ function rToday(list, hasActive){
           <span class="tag-dot" style="background:${on?'#fff':t.color}"></span>${esc(t.name)}
         </button>`}).join('')}
     </div>`;
-    html=`<div class="hero"><div class="hero-msg">${list.length} 件の復習があります</div><div class="hero-sub" style="margin-top:6px">${sub}</div></div>`+tfHtml;
+    html=bannerHtml+`<div class="hero"><div class="hero-msg">${list.length} 件の復習があります</div><div class="hero-sub" style="margin-top:6px">${sub}</div></div>`+tfHtml;
   }
   const filteredOverdue=activeTagFilter?overdue.filter(u=>(u.tags||[]).includes(activeTagFilter)):overdue;
   const filteredDueToday=activeTagFilter?dueToday.filter(u=>(u.tags||[]).includes(activeTagFilter)):dueToday;
@@ -2111,7 +2100,9 @@ function cHtmlUpcoming(u){
 }
 function setTodayTagFilter(id){
   activeTagFilter=id;
-  render();
+  const t=td();
+  const todayL=U.filter(u=>!u.done&&u.nextDate<=t);
+  rToday(todayL, U.some(u=>!u.done));
   haptic();
 }
 
@@ -2180,14 +2171,12 @@ function switchTab(btn){
 
   document.getElementById('nav-title').textContent=TABS[id];
   currentTabIdx=newIdx;
-  activeTagFilter=null; // reset tag filter on tab switch
 
-  // Bug4 fix: clear search state when leaving upcoming tab; re-render only upcoming panel
-  if(id!=='upcoming' && searchQ){
-    searchQ='';
-    const upL=U.filter(u=>!u.done&&u.nextDate>td()).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
-    rUpcoming(upL);
-  }
+  // Clear tag filter and search when leaving their respective tabs
+  let needRender = false;
+  if(activeTagFilter !== null){ activeTagFilter = null; needRender = true; }
+  if(id !== 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
+  if(needRender) render();
 }
 
 /* ══ FAB visibility helper ═════════════ */
@@ -2316,8 +2305,13 @@ function backupBannerHtml(){
 function dismissBackupReminder(e){
   if(e) e.stopPropagation();
   _backupBannerDays = null;
+  // Fade out immediately, then remove from DOM by triggering a render
   const el = document.getElementById('backup-reminder-banner');
-  if(el){ el.style.opacity='0'; el.style.transition='opacity .2s'; setTimeout(()=>render(), 220); }
+  if(el){
+    el.style.transition='opacity .18s';
+    el.style.opacity='0';
+    setTimeout(()=>render(), 200);
+  }
 }
 
 function openBackupSheet(){
@@ -2331,6 +2325,8 @@ function closeBackupSheet(){
   document.getElementById('backup-overlay').classList.remove('on');
   document.getElementById('backup-sheet').classList.remove('on');
   setFabHidden(false);
+  // Re-render so the backup banner (if dismissed by export) disappears from today panel
+  render();
 }
 function updateBackupLastText(){
   const last = getLastBackupDate();
@@ -2368,7 +2364,8 @@ function doExport(){
     setLastBackupDate();
     updateBackupLastText();
     _backupBannerDays = null;
-    render(); // remove banner from today panel
+    // Don't call render() here — backup sheet is open; banner state is cleared and
+    // will be picked up on next natural render() (e.g. when sheet closes or user acts)
     toast(IC.checkCircle, 'バックアップを保存しました');
     haptic('medium');
   } catch { toast(IC.alert, 'エクスポートに失敗しました'); }
@@ -2427,16 +2424,25 @@ function confirmImport(){
   const isPWA = navigator.standalone === true;
   if(isPWA) document.body.classList.add('pwa');
 
-  // Safe-area compensation.
-  // env(safe-area-inset-*) returns 0px in this PWA build due to meta/manifest config.
-  // We compute insets from screen vs viewport measurements directly.
+  // Safe-area compensation for PWA standalone mode.
+  // First try env(safe-area-inset-*) which works correctly in iOS 15+ PWA.
+  // Fall back to screen measurement if env() returns 0.
   if(isPWA){
-    const screenH = screen.height;
-    const innerH  = window.innerHeight;
-    const screenDiff = screenH - innerH;   // renamed: avoid collision with global diff()
+    // Use a temporary element to read env() values
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;bottom:env(safe-area-inset-bottom,0px);left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);top:env(safe-area-inset-top,0px);width:0;height:0;pointer-events:none;visibility:hidden';
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    const envBottom = parseFloat(cs.bottom) || 0;
+    const envTop    = parseFloat(cs.top)    || 0;
+    probe.remove();
 
-    const topInset    = screenDiff > 0 ? screenDiff : 47;
-    const bottomInset = 34;
+    const screenH    = screen.height;
+    const innerH     = window.innerHeight;
+    const screenDiff = screenH - innerH;
+
+    const topInset    = envTop    > 0 ? envTop    : (screenDiff > 0 ? screenDiff : 47);
+    const bottomInset = envBottom > 0 ? envBottom : 34;
 
     document.documentElement.style.setProperty('--safe-top',    topInset    + 'px');
     document.documentElement.style.setProperty('--safe-bottom', bottomInset + 'px');
