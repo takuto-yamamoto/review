@@ -218,7 +218,87 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .btn-snooze:active{opacity:.6;background:var(--sep)}
 
-/* ══ Done card ═════════════════════════ */
+/* ══ Tag progress summary (実績タブ) ══════ */
+.tag-prog-card{
+  background:var(--card);border-radius:var(--r);
+  overflow:hidden;margin-bottom:10px;
+  box-shadow:var(--shadow-sm);
+}
+.tag-prog-header{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;
+  -webkit-user-select:none;user-select:none;
+  min-height:56px;
+  cursor:pointer;
+  transition:background .12s;
+}
+.tag-prog-header:active{background:var(--fill)}
+.tag-prog-swatch{
+  width:38px;height:38px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:17px
+}
+.tag-prog-info{flex:1;min-width:0}
+.tag-prog-name{font-size:15px;font-weight:700;color:var(--lbl);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag-prog-meta{font-size:12px;color:var(--lbl2);margin-top:2px}
+.tag-prog-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tag-prog-pct{
+  font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;
+  min-width:38px;text-align:right
+}
+.tag-prog-chev{color:var(--lbl3);display:flex;transition:transform .22s ease}
+.tag-prog-card.open .tag-prog-chev{transform:rotate(180deg)}
+/* bar */
+.tag-prog-bar-wrap{
+  padding:0 16px 14px;
+}
+.tag-prog-bar-track{
+  height:8px;background:var(--fill);border-radius:8px;overflow:hidden;margin-bottom:8px
+}
+.tag-prog-bar-fill{
+  height:100%;border-radius:8px;
+  transition:width .5s cubic-bezier(.25,.46,.45,.94)
+}
+/* unit list inside tag card */
+.tag-prog-units{
+  max-height:0;overflow:hidden;
+  transition:max-height .3s cubic-bezier(.25,.46,.45,.94)
+}
+.tag-prog-card.open .tag-prog-units{max-height:3000px}
+.tag-prog-unit-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;border-top:.5px solid var(--sep)
+}
+.tag-prog-unit-icon{
+  width:32px;height:32px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0
+}
+.tag-prog-unit-body{flex:1;min-width:0}
+.tag-prog-unit-name{
+  font-size:14px;font-weight:600;color:var(--lbl);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px
+}
+.tag-prog-unit-bar-track{
+  height:4px;background:var(--fill);border-radius:4px;overflow:hidden
+}
+.tag-prog-unit-bar-fill{height:100%;border-radius:4px}
+.tag-prog-unit-pct{
+  font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;
+  flex-shrink:0;min-width:30px;text-align:right
+}
+/* no-tag card */
+.tag-prog-notag{
+  background:var(--card);border-radius:var(--r);
+  padding:14px 16px;margin-bottom:10px;
+  box-shadow:var(--shadow-sm)
+}
+.tag-prog-notag-row{
+  display:flex;align-items:center;gap:12px;min-height:40px
+}
+
+/* ══ Done row ══════════════════════════ */
 .done-row{
   background:var(--card);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;
   display:flex;align-items:center;gap:12px;
@@ -344,16 +424,23 @@ button,a,input,[role="button"]{touch-action:manipulation}
   padding-bottom:var(--safe-bottom);
   padding-left:var(--safe-left);
   padding-right:var(--safe-right);
-  display:flex;flex-direction:column;max-height:92vh;
+  display:flex;flex-direction:column;
+  max-height:92dvh; /* dvh = dynamic viewport height でキーボード変化に追従 */
   /* Ensure sheet renders above everything in PWA */
   -webkit-transform:translateY(110%);
+  will-change:transform,bottom,max-height;
 }
 .sheet.on{transform:translateY(0);-webkit-transform:translateY(0)}
 .sheet-pull{width:40px;height:5px;background:var(--lbl3);border-radius:3px;margin:12px auto 4px;flex-shrink:0}
 .sheet-body{
   padding:8px 20px 20px;
-  overflow-y:auto;-webkit-overflow-scrolling:touch;
-  flex:1;min-height:0
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  flex:1;min-height:0;
+  /* キーボード表示時に入力欄が見切れないよう下余白を追加 */
+  padding-bottom:max(20px, env(safe-area-inset-bottom));
+  scroll-padding-bottom:16px;
 }
 .sheet-ttl{font-size:17px;font-weight:700;text-align:center;margin-bottom:18px}
 .sheet-inp{
@@ -800,13 +887,171 @@ button,a,input,[role="button"]{touch-action:manipulation}
   display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
 
+/* ══ Today-done accordion ══════════════ */
+.today-done-acc{
+  border-radius:var(--r);overflow:hidden;margin-bottom:10px;
+}
+.today-done-header{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);
+  padding:13px 16px;cursor:pointer;
+  min-height:50px;
+  box-shadow:var(--shadow-sm);
+  border-radius:var(--r);
+  transition:background .12s;
+  -webkit-user-select:none;user-select:none;
+}
+.today-done-header:active{background:var(--fill)}
+.today-done-acc.open .today-done-header{
+  border-radius:var(--r) var(--r) 0 0;
+  box-shadow:none;
+  border-bottom:.5px solid var(--sep);
+}
+.today-done-icon{
+  width:32px;height:32px;border-radius:9px;
+  background:#D1FAE5;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0
+}
+.today-done-label{
+  flex:1;font-size:15px;font-weight:700;color:var(--lbl)
+}
+.today-done-count{
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;
+  color:#059669;background:#D1FAE5;border-radius:100px;
+  padding:3px 10px;flex-shrink:0
+}
+.today-done-chev{
+  color:var(--lbl3);flex-shrink:0;display:flex;
+  transition:transform .22s ease
+}
+.today-done-acc.open .today-done-chev{transform:rotate(180deg)}
+.today-done-body{
+  max-height:0;overflow:hidden;
+  transition:max-height .3s cubic-bezier(.25,.46,.45,.94);
+  background:var(--card);
+  border-radius:0 0 var(--r) var(--r);
+  box-shadow:var(--shadow-sm);
+}
+.today-done-acc.open .today-done-body{
+  max-height:4000px; /* generous cap */
+}
+.today-done-item{
+  display:flex;align-items:center;gap:11px;
+  padding:11px 16px;
+  border-top:.5px solid var(--sep);
+}
+.today-done-item:first-child{border-top:none}
+.today-done-item-icon{
+  width:28px;height:28px;border-radius:50%;
+  background:#D1FAE5;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0
+}
+.today-done-item-body{flex:1;min-width:0}
+.today-done-item-name{
+  font-size:14px;font-weight:600;color:var(--lbl);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.today-done-item-meta{
+  font-size:12px;color:var(--lbl2);margin-top:2px;
+  display:flex;align-items:center;gap:4px;flex-wrap:wrap
+}
+.today-done-item-del{
+  background:none;border:none;cursor:pointer;
+  min-width:36px;min-height:36px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--lbl3);border-radius:8px;transition:color .12s;flex-shrink:0
+}
+.today-done-item-del:active{color:var(--red)}
+
+/* ══ Settings panel ════════════════════ */
+.settings-section{
+  background:var(--card);border-radius:var(--r);
+  overflow:hidden;margin-bottom:12px;
+  box-shadow:var(--shadow-sm)
+}
+.settings-row{
+  display:flex;align-items:center;gap:14px;
+  padding:15px 16px;border-bottom:.5px solid var(--sep);
+  min-height:56px;
+}
+.settings-row:last-child{border-bottom:none}
+.settings-row-icon{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:18px
+}
+.settings-row-body{flex:1;min-width:0}
+.settings-row-title{font-size:15px;font-weight:600;color:var(--lbl)}
+.settings-row-sub{font-size:12px;color:var(--lbl2);margin-top:2px;line-height:1.4}
+/* iOS-style toggle */
+.toggle-wrap{flex-shrink:0}
+.toggle{
+  position:relative;width:51px;height:31px;
+  background:#E5E5EA;border-radius:100px;
+  border:none;cursor:pointer;
+  transition:background .25s cubic-bezier(.25,.46,.45,.94);
+  -webkit-tap-highlight-color:transparent;flex-shrink:0
+}
+.toggle.on{background:#34C759}
+.toggle::after{
+  content:'';position:absolute;
+  width:27px;height:27px;border-radius:50%;
+  background:#fff;top:2px;left:2px;
+  box-shadow:0 2px 6px rgba(0,0,0,.22);
+  transition:transform .25s cubic-bezier(.25,.46,.45,.94)
+}
+.toggle.on::after{transform:translateX(20px)}
+/* Time picker row */
+.notif-time-row{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;
+  border-top:.5px solid var(--sep)
+}
+.notif-time-inp{
+  background:var(--fill);border:none;border-radius:10px;
+  padding:9px 14px;font-family:'Outfit',-apple-system,sans-serif;
+  font-size:17px;font-weight:600;color:var(--lbl);
+  outline:none;-webkit-appearance:none;cursor:pointer;
+  /* On iOS, use a larger touch target */
+  min-height:44px;text-align:center
+}
+.notif-status-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  border-radius:100px;padding:4px 11px;
+  font-size:12px;font-weight:600;margin-top:6px
+}
+.notif-status-badge.granted{background:#D1FAE5;color:#065F46}
+.notif-status-badge.denied{background:#FEE2E2;color:#991B1B}
+.notif-status-badge.default{background:var(--fill);color:var(--lbl2)}
+.notif-test-btn{
+  background:var(--blue-bg);border:1.5px solid var(--blue-bd);
+  color:var(--blue-d);border-radius:10px;padding:9px 16px;
+  font-size:13px;font-weight:700;font-family:inherit;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
+  transition:opacity .12s;min-height:40px
+}
+.notif-test-btn:active{opacity:.7}
+.notif-test-btn:disabled{opacity:.4;pointer-events:none}
+.settings-hero{
+  background:linear-gradient(135deg,#1a3faa 0%,#2563EB 50%,#3B82F6 100%);
+  border-radius:var(--r);padding:18px 20px;margin-bottom:12px;
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 20px rgba(37,99,235,.3)
+}
+.settings-hero::before{content:'';position:absolute;width:160px;height:160px;top:-50px;right:-40px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
+.settings-hero-title{font-size:18px;font-weight:700;color:#fff;position:relative;z-index:1}
+.settings-hero-sub{font-size:13px;color:rgba(255,255,255,.7);margin-top:4px;position:relative;z-index:1;line-height:1.5}
+
 /* Import confirm overlay */
 .import-confirm{
   position:fixed;inset:0;z-index:120;
   display:flex;align-items:center;justify-content:center;
-  padding:24px;pointer-events:none;opacity:0;transition:opacity .2s
+  padding:24px;pointer-events:none;opacity:0;transition:opacity .2s;
+  background:rgba(0,0,0,0);transition:opacity .2s,background .2s;
 }
-.import-confirm.on{pointer-events:all;opacity:1}
+.import-confirm.on{pointer-events:all;opacity:1;background:rgba(0,0,0,.45)}
 .import-confirm-box{
   background:var(--card);border-radius:20px;padding:24px 22px 18px;
   width:100%;max-width:320px;
@@ -853,6 +1098,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
     <div class="panel visible" id="p-today"></div>
     <div class="panel" id="p-upcoming"></div>
     <div class="panel" id="p-done"></div>
+    <div class="panel" id="p-settings"></div>
   </div>
 
   <!-- Tab bar -->
@@ -869,6 +1115,10 @@ button,a,input,[role="button"]{touch-action:manipulation}
     <button class="tab-btn" data-tab="done" data-idx="2" onclick="switchTab(this)">
       <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
       <span class="tab-lbl">実績</span>
+    </button>
+    <button class="tab-btn" data-tab="settings" data-idx="3" onclick="switchTab(this)">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="tab-lbl">設定</span>
     </button>
   </div>
 
@@ -988,7 +1238,7 @@ const INTS  = [1,7,14,28,60,90,120,180];
 const MAX_STEP = STEPS.length; // 8
 const KEY   = 'fukushu-v6';
 const DOW   = '日月火水木金土';
-const TABS  = { today:'今日のタスク', upcoming:'予定一覧', done:'実績' };
+const TABS  = { today:'今日のタスク', upcoming:'予定一覧', done:'実績', settings:'設定' };
 
 /* ══ Tag data ══════════════════════════ */
 const TAG_KEY = 'fukushu-tags-v1';
@@ -1071,8 +1321,15 @@ function setTagColor(id, color){
   renderTagMgr();
 }
 function renameTag(id, val){
-  const name=val.trim(); if(!name) return;
-  const t=TAGS.find(x=>x.id===id); if(!t||t.name===name) return;
+  const name=val.trim();
+  const t=TAGS.find(x=>x.id===id); if(!t) return;
+  if(!name){
+    // 空にしようとした場合は元の名前に戻す（入力欄を復元）
+    const inp=document.querySelector(`#tli-${id} .tag-list-name`);
+    if(inp) inp.value=t.name;
+    return;
+  }
+  if(t.name===name) return;
   t.name=name; saveTags();
 }
 function deleteTag(id){
@@ -1202,16 +1459,15 @@ function fmtFull(s){
 /* ══ Scroll position preservation ══════
    B2 fix: save/restore scroll per panel so render() doesn't jump to top
 ══════════════════════════════════════════ */
-const _scroll = {today:0, upcoming:0, done:0};
+const _scroll = {today:0, upcoming:0, done:0, settings:0};
 function saveScroll(){
-  ['today','upcoming','done'].forEach(id=>{
+  ['today','upcoming','done','settings'].forEach(id=>{
     const el=document.getElementById('p-'+id);
-    // Fix2: use getComputedStyle so CSS-class-driven display:none is detected correctly
     if(el && getComputedStyle(el).display!=='none') _scroll[id]=el.scrollTop;
   });
 }
 function restoreScroll(){
-  ['today','upcoming','done'].forEach(id=>{
+  ['today','upcoming','done','settings'].forEach(id=>{
     const el=document.getElementById('p-'+id);
     if(el) el.scrollTop=_scroll[id]||0;
   });
@@ -1263,7 +1519,11 @@ function getSheetDate(){
   if(_sheetDateMode==='custom'){
     const v=document.getElementById('date-inp')?.value;
     if(v){
-      if(v>td()) return td();
+      if(v>td()){
+        // Silently clamp to today and reset the input
+        document.getElementById('date-inp').value=td();
+        return td();
+      }
       if(v<addD(td(),-30)) return addD(td(),-30);
       return v;
     }
@@ -1348,6 +1608,7 @@ function complete(id){
     toast(IC.checkCircle, esc(u.name)+'の全復習が完了！');
   } else {
     u.nextDate=addD(td(),INTS[u.step]);
+    u.lastDoneDate = td(); // track that a step was done today
     bumpStreak();
     save();
     // B1 fix: esc names in toast
@@ -1557,6 +1818,7 @@ function closeEdit(){
   document.getElementById('edit-inp').blur();
   document.getElementById('edit-modal').classList.remove('on');
   _editId=null;
+  _editTags=[];
   setFabHidden(false);
 }
 function saveEdit(){
@@ -1597,6 +1859,9 @@ function undoDelete(){
   clearTimeout(_undoTimer);
   clearTimeout(_undoProgTimer);
   const {unit}=_undoStack; _undoStack=null;
+  // Hide progress bar immediately
+  const prog=document.getElementById('undo-prog');
+  if(prog){ prog.style.transition='none'; prog.style.width='0%'; }
   if(unit.done){
     // Completed units go back to the done list (append)
     U.push(unit);
@@ -1761,6 +2026,14 @@ document.addEventListener('touchstart',e=>{
   if(openWrap&&!openWrap.contains(e.target)){ openWrap._closeSwipe?.(); openWrap=null; }
 },{passive:true});
 
+/* ══ Today-done accordion state ════════ */
+let _todayDoneOpen = false;
+function toggleTodayDone(){
+  _todayDoneOpen = !_todayDoneOpen;
+  const acc = document.getElementById('today-done-acc');
+  if(acc){ acc.classList.toggle('open', _todayDoneOpen); haptic(); }
+}
+
 /* ══════════════════════════════════════════
    RENDER
 ══════════════════════════════════════════ */
@@ -1786,21 +2059,72 @@ function render(){
   if(todayL.length>0){ tb.textContent=todayL.length; tb.classList.remove('h'); }
   else tb.classList.add('h');
 
-  rToday(todayL, active.length > 0);
+  rToday(todayL, active.length > 0, doneL);
   rUpcoming(upL);
   rDone(doneL);
 
   // Clear isNew flags after first render
-  U.forEach(u=>delete u.isNew);
+  let _hadNew = false;
+  U.forEach(u=>{ if(u.isNew){ delete u.isNew; _hadNew=true; } });
+  if(_hadNew) save();
 
   document.querySelectorAll('#p-today .cw[data-id]').forEach(w=>initSwipe(w));
   restoreScroll(); // B2 fix: restore scroll after rebuild
 }
 
 /* ── Today panel ── */
-function rToday(list, hasActive){
+function rToday(list, hasActive, allDone){
   const el=document.getElementById('p-today');
   const bannerHtml = backupBannerHtml();
+
+  // Units completed today (step advanced today, not fully done — or fully completed today)
+  const t = td();
+  const todayDoneList = (allDone || []).filter(u => {
+    if(!u.completedAt) return false;
+    const d = new Date(u.completedAt);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return ds === t;
+  });
+
+  // Also include in-progress units whose last step was done today
+  // (tracked via u.lastDoneDate we add in complete())
+  const inProgressDoneToday = U.filter(u => !u.done && u.lastDoneDate === t);
+  // Deduplicate: a unit can't be both done and in-progress, but guard anyway
+  const todayDoneAll = [...inProgressDoneToday, ...todayDoneList.filter(u => !inProgressDoneToday.find(x=>x.id===u.id))];
+
+  // Build accordion HTML (rendered regardless of pending list)
+  function todayDoneAccHtml(){
+    if(!todayDoneAll.length) return '';
+    const open = _todayDoneOpen;
+    const itemsHtml = todayDoneAll.map(u => {
+      const stepLabel = u.done
+        ? `全 ${STEPS.length} 回復習完了！`
+        : `${STEPS[u.step - 1]} 完了 · 次回 ${fmtShortText(u.nextDate)}`;
+      return `<div class="today-done-item">
+        <div class="today-done-item-icon">
+          ${IC.checkGreen}
+        </div>
+        <div class="today-done-item-body">
+          <div class="today-done-item-name">${esc(u.name)}</div>
+          <div class="today-done-item-meta">${stepLabel}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="today-done-acc${open?' open':''}" id="today-done-acc">
+      <div class="today-done-header" onclick="toggleTodayDone()">
+        <div class="today-done-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="today-done-label">完了済み</div>
+        <div class="today-done-count">✓ ${todayDoneAll.length}件</div>
+        <div class="today-done-chev">${IC.chevDown}</div>
+      </div>
+      <div class="today-done-body">
+        ${itemsHtml}
+      </div>
+    </div>`;
+  }
+
   if(!list.length){
     // Different state: tasks exist but all done today vs truly empty app
     if(hasActive){
@@ -1808,7 +2132,7 @@ function rToday(list, hasActive){
         <div class="hero all-done">
           <div class="hero-msg">今日はお疲れさまです！</div>
           <div class="hero-sub" style="margin-top:6px">「予定」タブで次のスケジュールを確認しましょう</div>
-        </div>`;
+        </div>`+todayDoneAccHtml();
     } else {
       el.innerHTML=bannerHtml+`
         <div class="hero">
@@ -1818,7 +2142,7 @@ function rToday(list, hasActive){
         <div class="empty">
           <div class="empty-icon">${IC.calendarLg}</div>
           <p>復習したい単元を追加すると<br>スケジュールが自動で組まれます</p>
-        </div>`;
+        </div>`+todayDoneAccHtml();
     }
     return;
   }
@@ -1854,6 +2178,7 @@ function rToday(list, hasActive){
   if(!filteredOverdue.length && !filteredDueToday.length){
     const ft=TAGS.find(x=>x.id===activeTagFilter);
     html+=`<div class="empty" style="padding:28px 0"><div class="empty-icon">${IC.searchLg}</div><h3>該当する単元がありません</h3><p>${ft?`「${esc(ft.name)}」タグの`:''}今日の復習はありません</p></div>`;
+    html += todayDoneAccHtml();
     el.innerHTML=html; return;
   }
   if(filteredOverdue.length){
@@ -1864,6 +2189,7 @@ function rToday(list, hasActive){
     html+=`<div class="sec${filteredOverdue.length?'':' sec-first'}">今日が期限 (${filteredDueToday.length})</div>`;
     html+=filteredDueToday.map(u=>cHtml(u)).join('');
   }
+  html += todayDoneAccHtml();
   el.innerHTML=html;
 }
 
@@ -1919,10 +2245,15 @@ function rUpcoming(list){
       cardsHtml+=cHtmlUpcoming(u);
     });
   } else {
+    const _emptyMsg = searchQ
+      ? `「${esc(searchQ)}」に一致する単元は<br>見つかりませんでした`
+      : activeTagFilter
+        ? `選択中のタグに一致する単元はありません`
+        : `該当する単元はありません`;
     cardsHtml=`<div class="empty" style="padding:28px 0">
       <div class="empty-icon">${IC.searchLg}</div>
       <h3>該当する単元がありません</h3>
-      <p>「${esc(searchQ)}」に一致する単元は<br>見つかりませんでした</p>
+      <p>${_emptyMsg}</p>
     </div>`;
   }
   el.innerHTML=barHtml+adjHtml+cardsHtml;
@@ -1933,11 +2264,19 @@ function rUpcoming(list){
 }
 
 /* ── Done/Achievement panel ── */
+let _tagProgOpen = {}; // { [tagId]: bool } — open state per tag card
+
+function toggleTagProg(tagId){
+  _tagProgOpen[tagId] = !_tagProgOpen[tagId];
+  const card = document.getElementById('tp-'+tagId);
+  if(card){ card.classList.toggle('open', !!_tagProgOpen[tagId]); haptic(); }
+}
+
 function rDone(doneList){
   const el=document.getElementById('p-done');
 
   // All units (active + done) for the achievement view
-  const allActive = U.filter(u=>!u.done).sort((a,b)=>a.addedDate.localeCompare(b.addedDate));
+  const allActive = U.filter(u=>!u.done).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
   const totalUnits = allActive.length + doneList.length;
 
   if(totalUnits === 0){
@@ -1989,9 +2328,115 @@ function rDone(doneList){
     </div>
   </div>`;
 
+  // ── Tag progress summary ──
+  const allUnits = [...allActive, ...doneList]; // all units regardless of state
+  const taggedIds = [...new Set(allUnits.flatMap(u=>u.tags||[]))].filter(id=>TAGS.find(t=>t.id===id));
+
+  if(taggedIds.length){
+    html += `<div class="sec sec-first">科目別の進捗</div>`;
+
+    html += taggedIds.map(tagId => {
+      const tag = TAGS.find(t=>t.id===tagId); if(!tag) return '';
+      const units = allUnits.filter(u=>(u.tags||[]).includes(tagId));
+      const steps = units.reduce((s,u)=>s+(u.done?MAX_STEP:u.step),0);
+      const maxS  = units.length * MAX_STEP;
+      const pct   = maxS>0 ? Math.round(steps/maxS*100) : 0;
+      const doneCount   = units.filter(u=>u.done).length;
+      const activeCount = units.filter(u=>!u.done).length;
+      const todayCount  = units.filter(u=>!u.done && u.nextDate<=td()).length;
+
+      // colour logic
+      const pctColor = pct===100 ? '#059669' : pct>=60 ? '#2563EB' : pct>=30 ? '#F59E0B' : '#6B7280';
+      const isOpen = !!_tagProgOpen[tagId];
+
+      // per-unit rows inside the accordion
+      const unitRowsHtml = units.map(u=>{
+        const uPct = u.done ? 100 : Math.round(u.step/MAX_STEP*100);
+        const uColor = u.done ? '#059669' : uPct>=60 ? '#2563EB' : uPct>=30 ? '#F59E0B' : '#9CA3AF';
+        const uIcon  = u.done
+          ? `<div class="tag-prog-unit-icon" style="background:#D1FAE5">${IC.checkGreen}</div>`
+          : u.nextDate<=td()
+            ? `<div class="tag-prog-unit-icon" style="background:#FEE2E2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>`
+            : `<div class="tag-prog-unit-icon" style="background:${tag.color}22"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${tag.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>`;
+        const uStatus = u.done
+          ? `<span style="color:#059669;font-weight:600">全完了</span>`
+          : u.nextDate<=td()
+            ? `<span style="color:#DC2626;font-weight:600">復習待ち · ${STEPS[u.step]}</span>`
+            : `${STEPS[u.step]} · 次回 ${fmtShortText(u.nextDate)}`;
+        return `<div class="tag-prog-unit-row">
+          ${uIcon}
+          <div class="tag-prog-unit-body">
+            <div class="tag-prog-unit-name">${esc(u.name)}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <div class="tag-prog-unit-bar-track" style="flex:1">
+                <div class="tag-prog-unit-bar-fill" style="width:${uPct}%;background:${uColor}"></div>
+              </div>
+              <span style="font-size:11px;color:var(--lbl2);white-space:nowrap">${uStatus}</span>
+            </div>
+          </div>
+          <div class="tag-prog-unit-pct" style="color:${uColor}">${uPct}%</div>
+        </div>`;
+      }).join('');
+
+      const metaParts = [];
+      if(doneCount)   metaParts.push(`完了 ${doneCount}件`);
+      if(activeCount) metaParts.push(`進行中 ${activeCount}件`);
+      if(todayCount)  metaParts.push(`<span style="color:#DC2626;font-weight:600">今日 ${todayCount}件</span>`);
+      const metaStr = metaParts.length ? metaParts.join(' / ') : `${units.length}件`;
+
+      return `<div class="tag-prog-card${isOpen?' open':''}" id="tp-${tagId}">
+        <div class="tag-prog-header" onclick="toggleTagProg('${tagId}')">
+          <div class="tag-prog-swatch" style="background:${tag.color}22">
+            <span style="color:${tag.color};font-size:16px">●</span>
+          </div>
+          <div class="tag-prog-info">
+            <div class="tag-prog-name">${esc(tag.name)}</div>
+            <div class="tag-prog-meta">${units.length}単元 · ${metaStr}</div>
+          </div>
+          <div class="tag-prog-right">
+            <div class="tag-prog-pct" style="color:${pctColor}">${pct}%</div>
+            <div class="tag-prog-chev">${IC.chevDown}</div>
+          </div>
+        </div>
+        <div class="tag-prog-bar-wrap">
+          <div class="tag-prog-bar-track">
+            <div class="tag-prog-bar-fill" style="width:${pct}%;background:${pctColor}"></div>
+          </div>
+        </div>
+        <div class="tag-prog-units">
+          ${unitRowsHtml}
+        </div>
+      </div>`;
+    }).join('');
+
+    // Units with no tags
+    const noTagUnits = allUnits.filter(u=>!(u.tags&&u.tags.length));
+    if(noTagUnits.length){
+      const steps = noTagUnits.reduce((s,u)=>s+(u.done?MAX_STEP:u.step),0);
+      const pct   = Math.round(steps/(noTagUnits.length*MAX_STEP)*100);
+      html += `<div class="tag-prog-notag">
+        <div class="tag-prog-notag-row">
+          <div class="tag-prog-swatch" style="background:var(--fill);width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="color:var(--lbl3);font-size:16px">—</span>
+          </div>
+          <div class="tag-prog-info" style="flex:1;min-width:0;margin-left:12px">
+            <div class="tag-prog-name">タグなし</div>
+            <div class="tag-prog-meta">${noTagUnits.length}単元</div>
+          </div>
+          <div class="tag-prog-pct" style="color:var(--lbl2);font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;flex-shrink:0">${pct}%</div>
+        </div>
+        <div style="padding:0 0 4px">
+          <div class="tag-prog-bar-track">
+            <div class="tag-prog-bar-fill" style="width:${pct}%;background:var(--lbl3)"></div>
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
   // ── In-progress units ──
   if(allActive.length){
-    html+=`<div class="sec sec-first">進行中（${allActive.length}）</div>`;
+    html+=`<div class="sec${taggedIds.length?'':' sec-first'}">進行中（${allActive.length}）</div>`;
     html+=allActive.map(u=>{
       const pct=Math.round(u.step/MAX_STEP*100);
       const nextInfo = u.nextDate<=td()
@@ -2025,7 +2470,7 @@ function rDone(doneList){
 
   // ── Fully completed units ──
   if(doneList.length){
-    html+=`<div class="sec${allActive.length?'':' sec-first'}">全復習完了 🎉（${doneList.length}）</div>`;
+    html+=`<div class="sec${allActive.length||taggedIds.length?'':' sec-first'}">全復習完了 🎉（${doneList.length}）</div>`;
     html+=doneList.map(u=>`
       <div class="done-row" id="w-${u.id}">
         <div class="done-icon">${IC.checkGreen}</div>
@@ -2100,9 +2545,7 @@ function cHtmlUpcoming(u){
 }
 function setTodayTagFilter(id){
   activeTagFilter=id;
-  const t=td();
-  const todayL=U.filter(u=>!u.done&&u.nextDate<=t);
-  rToday(todayL, U.some(u=>!u.done));
+  render();
   haptic();
 }
 
@@ -2170,13 +2613,23 @@ function switchTab(btn){
   });
 
   document.getElementById('nav-title').textContent=TABS[id];
+  // Hide tag/backup nav buttons on settings tab (they're accessible from settings panel itself)
+  const tagBtn    = document.getElementById('tag-mgr-btn');
+  const backupBtn = document.getElementById('backup-btn');
+  if(tagBtn)    tagBtn.style.display    = id === 'settings' ? 'none' : '';
+  if(backupBtn) backupBtn.style.display = id === 'settings' ? 'none' : '';
   currentTabIdx=newIdx;
+
+  // Hide FAB on settings tab
+  setFabHidden(id === 'settings');
 
   // Clear tag filter and search when leaving their respective tabs
   let needRender = false;
   if(activeTagFilter !== null){ activeTagFilter = null; needRender = true; }
   if(id !== 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
   if(needRender) render();
+  else if(id === 'today' || id === 'upcoming' || id === 'done') render(); // always re-render content tabs
+  if(id === 'settings') renderSettings();
 }
 
 /* ══ FAB visibility helper ═════════════ */
@@ -2190,6 +2643,9 @@ function setFabHidden(hidden){
       document.getElementById('edit-modal')?.classList.contains('on') ||
       document.getElementById('snooze-pick')?.classList.contains('on');
     if(anyOpen) return; // keep hidden
+    // Keep hidden on settings tab
+    const activeTab = document.querySelector('.tab-btn.on');
+    if(activeTab && activeTab.dataset.tab === 'settings') return;
   }
   const fab=document.querySelector('.float-fab');
   if(fab) fab.classList.toggle('hidden', hidden);
@@ -2206,7 +2662,17 @@ function openSheet(){
   setFabHidden(true);
   updateSheetInfo(); // after .on so the guard check passes
   _sheetTags=[];
-  setTimeout(()=>{ document.getElementById('inp').focus(); renderSheetTagSel(); },50);
+  setTimeout(()=>{
+    const inp = document.getElementById('inp');
+    renderSheetTagSel();
+    inp.focus();
+    // iOSでフォーカス時にページが上スクロールするのを防ぐ
+    setTimeout(()=>{
+      if(!document.getElementById('sheet')?.classList.contains('on')) return;
+      window.scrollTo(0, 0);
+      inp.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    }, 120);
+  }, 50);
   haptic();
 }
 
@@ -2214,10 +2680,14 @@ function closeSheet(){
   const sh=document.getElementById('sheet');
   document.getElementById('overlay').classList.remove('on');
   sh.classList.remove('on');
-  sh.style.bottom=''; // B5: reset keyboard-push offset
+  // Reset all keyboard-push overrides so next open starts clean
+  sh.style.bottom     = '';
+  sh.style.maxHeight  = '';
+  sh.style.transition = '';
   document.getElementById('inp').blur();
   document.getElementById('inp').classList.remove('shake');
   _sheetDateMode='today';
+  _sheetTags=[];
   setFabHidden(false);
 }
 
@@ -2228,16 +2698,43 @@ function closeSheet(){
 })();
 
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize',()=>{
-    const sh=document.getElementById('sheet');
-    if(!sh.classList.contains('on')) return;
-    // PWA standalone: compute gap from visualViewport vs window
-    const windowH = window.innerHeight;
-    const vpH = window.visualViewport.height;
-    const gap = windowH - vpH;
-    // Only push if keyboard is clearly visible (gap > 100px to avoid false triggers)
-    sh.style.bottom = gap > 100 ? gap + 'px' : '';
-  });
+  let _vpRaf = null;
+
+  function _syncSheetToKeyboard(){
+    if(_vpRaf) cancelAnimationFrame(_vpRaf);
+    _vpRaf = requestAnimationFrame(()=>{
+      const sh = document.getElementById('sheet');
+      if(!sh.classList.contains('on')) return;
+
+      const vpH  = window.visualViewport.height;
+      const vpT  = window.visualViewport.offsetTop;
+      const winH = window.innerHeight;
+      const kbH  = Math.max(0, winH - vpH - vpT);
+
+      if(kbH > 80){
+        // キーボードが表示中：シートをキーボード上端に合わせ高さを制限
+        sh.style.transition = 'none';
+        sh.style.bottom     = kbH + 'px';
+        sh.style.maxHeight  = (vpH - 24) + 'px';
+        // 入力欄が隠れていたらスクロールして見えるようにする
+        // シートがまだ開いているときのみ実行（閉鎖後のfireを防ぐ）
+        setTimeout(()=>{
+          const s2 = document.getElementById('sheet');
+          if(!s2 || !s2.classList.contains('on')) return;
+          const inp = document.getElementById('inp');
+          if(inp) inp.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }, 60);
+      } else {
+        // キーボードが閉じた：元の状態に戻す
+        sh.style.transition = '';
+        sh.style.bottom     = '';
+        sh.style.maxHeight  = '';
+      }
+    });
+  }
+
+  window.visualViewport.addEventListener('resize', _syncSheetToKeyboard);
+  window.visualViewport.addEventListener('scroll', _syncSheetToKeyboard);
 }
 
 /* ══ Toast ═════════════════════════════ */
@@ -2423,6 +2920,7 @@ function handleImportFile(e){
         const tags  = Array.isArray(u.tags) ? u.tags.filter(t => typeof t === 'string') : [];
         return { id, name, addedDate, nextDate, step, done,
                  ...(done ? {completedAt: u.completedAt || Date.now()} : {}),
+                 ...(u.lastDoneDate && DATE_RE.test(u.lastDoneDate) ? {lastDoneDate: u.lastDoneDate} : {}),
                  tags };
       });
       // Validate and sanitize tags
@@ -2462,9 +2960,219 @@ function confirmImport(){
     closeBackupSheet(); // internally calls render()
     renderSheetTagSel(); // refresh tag selectors with new TAGS
     renderEditTagSel();
+    renderSettings();   // refresh settings tab (tag count etc.)
     toast(IC.checkCircle, `${U.length} 件のデータを復元しました`);
     haptic('heavy');
   } catch { toast(IC.alert, 'インポートに失敗しました'); }
+}
+
+/* ══════════════════════════════════════════
+   NOTIFICATION SYSTEM
+   Strategy: Service Worker shows notifications via showNotification().
+   We schedule a daily alarm using setTimeout calculated from the
+   user-configured time. On each page open we reschedule.
+══════════════════════════════════════════ */
+const NOTIF_KEY = 'fukushu-notif-v1'; // { enabled, hour, minute }
+
+function loadNotifSettings(){
+  try { return JSON.parse(localStorage.getItem(NOTIF_KEY)) || {enabled:false, hour:8, minute:0}; }
+  catch { return {enabled:false, hour:8, minute:0}; }
+}
+function saveNotifSettings(s){ localStorage.setItem(NOTIF_KEY, JSON.stringify(s)); }
+
+let _notifTimer = null;
+
+function msUntilTime(hour, minute){
+  const now = new Date();
+  const target = new Date();
+  target.setHours(hour, minute, 0, 0);
+  if(target <= now) target.setDate(target.getDate() + 1); // next day
+  return target - now;
+}
+
+function scheduleNotification(){
+  if(_notifTimer) clearTimeout(_notifTimer);
+  if(!('Notification' in window)) return; // unsupported browser
+  const s = loadNotifSettings();
+  if(!s.enabled || Notification.permission !== 'granted') return;
+
+  const ms = msUntilTime(s.hour, s.minute);
+  _notifTimer = setTimeout(async () => {
+    await fireNotification();
+    scheduleNotification(); // reschedule for the next day
+  }, ms);
+}
+
+async function fireNotification(){
+  const todayCount = U.filter(u => !u.done && u.nextDate <= td()).length;
+  const body = todayCount > 0
+    ? `今日の復習が ${todayCount} 件あります。忘れずにチェックしよう！`
+    : '今日の復習は完了済みです。お疲れさまでした！';
+
+  if('serviceWorker' in navigator){
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification('復習マネージャー 📚', {
+        body,
+        icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3Cpath d='M28 22h32a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M34 42h32M34 54h22' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",
+        badge: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3C/svg%3E",
+        tag: 'fukushu-daily',
+        renotify: true,
+        requireInteraction: false,
+        vibrate: [100, 50, 100],
+      });
+      return;
+    } catch(_){}
+  }
+  // Fallback: direct Notification API
+  if('Notification' in window && Notification.permission === 'granted'){
+    new Notification('復習マネージャー 📚', { body, tag: 'fukushu-daily' });
+  }
+}
+
+async function requestNotifPermission(){
+  if(!('Notification' in window)) return 'unsupported';
+  if(Notification.permission === 'granted') return 'granted';
+  if(Notification.permission === 'denied') return 'denied';
+  const result = await Notification.requestPermission();
+  return result;
+}
+
+async function toggleNotification(enabled){
+  if(!('Notification' in window)){ toast(IC.alert, 'このブラウザは通知に対応していません'); return; }
+  const s = loadNotifSettings();
+  if(enabled && Notification.permission !== 'granted'){
+    const result = await requestNotifPermission();
+    if(result !== 'granted'){
+      toast(IC.alert, '通知が許可されていません。設定から許可してください');
+      renderSettings(); // re-render to reset toggle visual
+      return;
+    }
+  }
+  s.enabled = enabled;
+  saveNotifSettings(s);
+  if(enabled){
+    scheduleNotification();
+    toast(IC.checkCircle, `毎朝 ${String(s.hour).padStart(2,'0')}:${String(s.minute).padStart(2,'0')} に通知します`);
+  } else {
+    if(_notifTimer) clearTimeout(_notifTimer);
+    toast(IC.moon, '通知をオフにしました');
+  }
+  renderSettings();
+  haptic('medium');
+}
+
+function updateNotifTime(val){
+  if(!val || !val.includes(':')) return;
+  const parts = val.split(':');
+  const h = parseInt(parts[0]), m = parseInt(parts[1]);
+  if(isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return;
+  const s = loadNotifSettings();
+  s.hour = h; s.minute = m;
+  saveNotifSettings(s);
+  if(s.enabled){
+    scheduleNotification();
+    toast(IC.check, `通知時刻を ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} に変更しました`);
+  }
+}
+
+async function sendTestNotification(){
+  if(Notification.permission !== 'granted'){
+    const r = await requestNotifPermission();
+    if(r !== 'granted'){ toast(IC.alert, '通知が許可されていません'); return; }
+  }
+  await fireNotification();
+  toast(IC.checkCircle, 'テスト通知を送信しました');
+  haptic('medium');
+}
+
+/* ══ Settings panel renderer ════════════ */
+function renderSettings(){
+  const el = document.getElementById('p-settings'); if(!el) return;
+  const s = loadNotifSettings();
+  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  const permLabel = perm === 'granted' ? '✓ 許可済み' : perm === 'denied' ? '✕ 拒否済み' : perm === 'unsupported' ? '非対応' : '未設定';
+  const permCls   = perm === 'granted' ? 'granted' : perm === 'denied' ? 'denied' : 'default';
+  const timeVal   = `${String(s.hour).padStart(2,'0')}:${String(s.minute).padStart(2,'0')}`;
+  const notifSupported = 'Notification' in window && 'serviceWorker' in navigator;
+
+  el.innerHTML = `
+    <div class="settings-hero">
+      <div class="settings-hero-title">⚙️ 設定</div>
+      <div class="settings-hero-sub">通知やアプリの動作をカスタマイズできます</div>
+    </div>
+
+    <div class="sec sec-first">通知</div>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div class="settings-row-icon" style="background:#EFF6FF">🔔</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">毎朝の復習リマインダー</div>
+          <div class="settings-row-sub">
+            設定した時刻に通知でお知らせします。アプリをホーム画面に追加して使用することを推奨します。
+            ${notifSupported ? `<br><span class="notif-status-badge ${permCls}">${permLabel}</span>` : '<br><span class="notif-status-badge default">このブラウザは非対応です</span>'}
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <button class="toggle${s.enabled ? ' on' : ''}" id="notif-toggle"
+            onclick="toggleNotification(${!s.enabled})"
+            ${!notifSupported ? 'disabled style="opacity:.4;pointer-events:none"' : ''}
+            aria-label="通知のオン/オフ"></button>
+        </div>
+      </div>
+      ${s.enabled ? `
+      <div class="notif-time-row">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:6px">通知時刻</div>
+          <input class="notif-time-inp" type="time" value="${timeVal}"
+            onchange="updateNotifTime(this.value)" oninput="updateNotifTime(this.value)"
+            style="width:120px">
+        </div>
+        <button class="notif-test-btn" onclick="sendTestNotification()"
+          ${perm !== 'granted' ? 'disabled' : ''}>テスト送信</button>
+      </div>` : ''}
+    </div>
+
+    ${perm === 'denied' ? `
+    <div style="background:#FEF2F2;border:1px solid rgba(255,59,48,.2);border-radius:12px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:#991B1B;margin-bottom:4px">⚠️ 通知がブロックされています</div>
+      <div style="font-size:12px;color:#B91C1C;line-height:1.6">
+        iOSの場合：設定 → Safari → 通知 で許可してください。<br>
+        Androidの場合：ブラウザの設定から通知を許可してください。
+      </div>
+    </div>` : ''}
+
+    <div class="sec">データ管理</div>
+    <div class="settings-section">
+      <div class="settings-row" onclick="openBackupSheet()" style="cursor:pointer">
+        <div class="settings-row-icon" style="background:#EFF6FF">💾</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">バックアップ</div>
+          <div class="settings-row-sub">データのエクスポート・インポート</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="settings-row" onclick="openTagMgr()" style="cursor:pointer">
+        <div class="settings-row-icon" style="background:#F5F3FF">🏷️</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">タグを管理</div>
+          <div class="settings-row-sub">タグの追加・編集・削除</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <div class="sec">アプリについて</div>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div class="settings-row-icon" style="background:var(--blue-bg)">📚</div>
+        <div class="settings-row-body">
+          <div class="settings-row-title">復習マネージャー</div>
+          <div class="settings-row-sub">エビングハウス忘却曲線に基づく<br>スマート復習スケジューラー</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 /* ══ Init ══════════════════════════════ */
@@ -2505,6 +3213,8 @@ function confirmImport(){
 
   render();
   renderSheetTagSel();
+  renderSettings();
+  scheduleNotification(); // resume notification schedule on each page load
   setTimeout(checkBackupReminder, 800); // slight delay so UI is settled
 })();
 
