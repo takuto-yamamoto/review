@@ -766,6 +766,8 @@ button,a,input,[role="button"]{touch-action:manipulation}
   background:var(--card);border-radius:24px 24px 0 0;
   transform:translateY(110%);transition:transform .38s cubic-bezier(.32,.72,0,1);
   padding-bottom:var(--safe-bottom);
+  padding-left:var(--safe-left);
+  padding-right:var(--safe-right);
   display:flex;flex-direction:column;max-height:90vh
 }
 .tag-mgr-sheet.on{transform:translateY(0)}
@@ -959,7 +961,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .today-done-item-del{
   background:none;border:none;cursor:pointer;
-  min-width:36px;min-height:36px;
+  min-width:44px;min-height:44px;
   display:flex;align-items:center;justify-content:center;
   color:var(--lbl3);border-radius:8px;transition:color .12s;flex-shrink:0
 }
@@ -1048,7 +1050,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .import-confirm{
   position:fixed;inset:0;z-index:120;
   display:flex;align-items:center;justify-content:center;
-  padding:24px;pointer-events:none;opacity:0;transition:opacity .2s;
+  padding:24px;pointer-events:none;opacity:0;
   background:rgba(0,0,0,0);transition:opacity .2s,background .2s;
 }
 .import-confirm.on{pointer-events:all;opacity:1;background:rgba(0,0,0,.45)}
@@ -1296,7 +1298,6 @@ function renderTagMgr(){
       <div class="tag-list-color" style="background:${t.color}"
         onclick="openTagColorEdit('${t.id}')"></div>
       <input class="tag-list-name" value="${esc(t.name)}" maxlength="20"
-        onchange="renameTag('${t.id}',this.value)"
         onblur="renameTag('${t.id}',this.value)">
       <button class="tag-list-del" onclick="deleteTag('${t.id}')">${IC.trash}</button>
     </div>
@@ -1330,6 +1331,12 @@ function renameTag(id, val){
     return;
   }
   if(t.name===name) return;
+  // 重複チェック
+  if(TAGS.some(x=>x.id!==id && x.name===name)){
+    const inp=document.querySelector(`#tli-${id} .tag-list-name`);
+    if(inp){ inp.value=t.name; inp.classList.add('shake'); setTimeout(()=>inp.classList.remove('shake'),400); }
+    haptic('medium'); return;
+  }
   t.name=name; saveTags();
 }
 function deleteTag(id){
@@ -1339,6 +1346,9 @@ function deleteTag(id){
   if(activeTagFilter===id) activeTagFilter=null; // reset stale filter
   save(); saveTags();
   renderTagMgr();
+  // Refresh tag selector in open sheets
+  renderSheetTagSel();
+  renderEditTagSel();
   haptic();
 }
 function addTag(){
@@ -1519,12 +1529,16 @@ function getSheetDate(){
   if(_sheetDateMode==='custom'){
     const v=document.getElementById('date-inp')?.value;
     if(v){
+      const minDate=addD(td(),-30);
       if(v>td()){
         // Silently clamp to today and reset the input
         document.getElementById('date-inp').value=td();
         return td();
       }
-      if(v<addD(td(),-30)) return addD(td(),-30);
+      if(v<minDate){
+        document.getElementById('date-inp').value=minDate;
+        return minDate;
+      }
       return v;
     }
     return td();
@@ -1569,6 +1583,12 @@ function addUnit(){
     inp.classList.add('shake');
     haptic('medium'); inp.focus(); return;
   }
+  // 同名の未完了ユニットが既にある場合は警告
+  if(U.some(u=>!u.done && u.name===name)){
+    inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
+    toast(IC.alert, '同じ名前の単元がすでに存在します');
+    haptic('medium'); inp.focus(); return;
+  }
   const learnDate=getSheetDate();
   // 1回目の復習は学習日の翌日。安全策：nextDate が learnDate 以前にはならないことを保証
   const rawNext=addD(learnDate,INTS[0]);
@@ -1591,7 +1611,7 @@ function complete(id){
   _completing.add(id);
   // Safety: clear from set after 3s even if callbacks fail
   const _safetyTimer = setTimeout(()=>_completing.delete(id), 3000);
-  const u=U.find(x=>x.id===id); if(!u){ _completing.delete(id); clearTimeout(_safetyTimer); return; }
+  const u=U.find(x=>x.id===id); if(!u||u.done){ _completing.delete(id); clearTimeout(_safetyTimer); return; }
   const card=document.getElementById('c-'+id);
   if(card) card.classList.add('flash');
   haptic('medium');
@@ -1701,10 +1721,9 @@ function analyzeLoad(){
   const OVER=5, SHIFT=3, CAP=8;
   const t=td();
   const map={};
+  // Only consider future tasks (today's overdue tasks cannot be moved further back)
   U.filter(u=>!u.done && u.nextDate>t).forEach(u=>{ map[u.nextDate]=map[u.nextDate]||[]; map[u.nextDate].push(u.id); });
   const cnt={};
-  const todayCount=U.filter(u=>!u.done && u.nextDate<=t).length;
-  if(todayCount>0) cnt[t]=todayCount;
   Object.keys(map).forEach(d=>cnt[d]=map[d].length);
   const workMap={};
   Object.keys(map).forEach(d=>workMap[d]=[...map[d]]);
@@ -1735,9 +1754,11 @@ function analyzeLoad(){
 }
 
 function applySmartAdjust(moves){
+  if(!moves || !moves.length) return;
   moves.forEach(({id,to})=>{ const u=U.find(x=>x.id===id); if(u) u.nextDate=to; });
   save();
   adjDismissed=true;
+  window._adjMoves=null;
   try { localStorage.setItem(ADJ_DISMISSED_KEY,'1'); } catch(_){}
   render();
   toast(IC.check, moves.length+'件のタスクを分散しました');
@@ -1823,10 +1844,16 @@ function closeEdit(){
 }
 function saveEdit(){
   const name=document.getElementById('edit-inp').value.trim();
-  if(!name) return;
+  if(!name){
+    const inp=document.getElementById('edit-inp');
+    inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
+    haptic('medium'); return;
+  }
   const u=U.find(x=>x.id===_editId); if(!u) return;
-  u.name=name; u.tags=[..._editTags]; save(); closeEdit(); render();
-  toast(IC.check, esc(name)+'に更新しました');
+  u.name=name; u.tags=[..._editTags]; save();
+  const savedName=name;
+  closeEdit(); render();
+  toast(IC.check, esc(savedName)+'に更新しました');
   haptic('medium');
 }
 document.getElementById('edit-inp').addEventListener('keydown',e=>{ if(e.key==='Enter') saveEdit(); if(e.key==='Escape') closeEdit(); });
@@ -2108,6 +2135,7 @@ function rToday(list, hasActive, allDone){
           <div class="today-done-item-name">${esc(u.name)}</div>
           <div class="today-done-item-meta">${stepLabel}</div>
         </div>
+        <button class="today-done-item-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
       </div>`;
     }).join('');
     return `<div class="today-done-acc${open?' open':''}" id="today-done-acc">
@@ -2241,7 +2269,8 @@ function rUpcoming(list){
     filtered.forEach(u=>{
       const d=diff(u.nextDate);
       const g=d<=7?'今週':d<=14?'来週':'2週間以降';
-      if(!q&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
+      // グループヘッダーは検索・タグフィルターなしのときのみ表示
+      if(!q&&!activeTagFilter&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
       cardsHtml+=cHtmlUpcoming(u);
     });
   } else {
@@ -2545,7 +2574,12 @@ function cHtmlUpcoming(u){
 }
 function setTodayTagFilter(id){
   activeTagFilter=id;
-  render();
+  const t=td();
+  const active=U.filter(u=>!u.done).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  const todayL=active.filter(u=>u.nextDate<=t);
+  const doneL=U.filter(u=>u.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+  rToday(todayL, active.length>0, doneL);
+  document.querySelectorAll('#p-today .cw[data-id]').forEach(w=>initSwipe(w));
   haptic();
 }
 
@@ -2627,9 +2661,8 @@ function switchTab(btn){
   let needRender = false;
   if(activeTagFilter !== null){ activeTagFilter = null; needRender = true; }
   if(id !== 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
-  if(needRender) render();
-  else if(id === 'today' || id === 'upcoming' || id === 'done') render(); // always re-render content tabs
-  if(id === 'settings') renderSettings();
+  if(id === 'settings'){ renderSettings(); }
+  else if(needRender || id === 'today' || id === 'upcoming' || id === 'done') render();
 }
 
 /* ══ FAB visibility helper ═════════════ */
@@ -2796,13 +2829,13 @@ function backupBannerHtml(){
   const days = _backupBannerDays;
   const daysText = days === Infinity ? 'まだバックアップしていません' : `最後のバックアップから ${days} 日経過しています`;
   return `<div class="backup-reminder" id="backup-reminder-banner"
-    onclick="if(!event.target.closest('.backup-reminder-close')){dismissBackupReminder(event);openBackupSheet();}">
+    onclick="if(!event.target.closest('.backup-reminder-close')){openBackupSheet();}">
     <div class="backup-reminder-icon">💾</div>
     <div class="backup-reminder-body">
       <div class="backup-reminder-ttl">バックアップを推奨します</div>
       <div class="backup-reminder-sub">${daysText}。タップしてデータを保存しませんか？</div>
     </div>
-    <button class="backup-reminder-close" onclick="dismissBackupReminder(event)" aria-label="閉じる">✕</button>
+    <button class="backup-reminder-close" onclick="event.stopPropagation();dismissBackupReminder()" aria-label="閉じる">✕</button>
   </div>`;
 }
 
@@ -3210,6 +3243,22 @@ function renderSettings(){
     `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
   document.getElementById('inp').addEventListener('keydown',e=>{ if(e.key==='Enter') addUnit(); });
   document.getElementById('date-inp').addEventListener('change',updateSheetInfo);
+
+  // 日付をまたいでバックグラウンドから復帰した際にUIを更新する
+  let _lastActiveDate = td();
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState !== 'visible') return;
+    const today = td();
+    if(today !== _lastActiveDate){
+      _lastActiveDate = today;
+      // 日付表示を更新
+      const d=new Date();
+      document.getElementById('nav-date').textContent=
+        `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
+      render();
+      scheduleNotification(); // 通知スケジュールを再設定
+    }
+  });
 
   render();
   renderSheetTagSel();
