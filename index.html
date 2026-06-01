@@ -19,7 +19,7 @@
 :root{
   --bg:#F0F2F8;--card:#fff;
   --blue:#2563EB;--blue-d:#1D4ED8;--blue-bg:#EFF6FF;--blue-bd:rgba(37,99,235,.18);
-  --red:#FF3B30;--green:#34C759;
+  --red:#FF3B30;
   --lbl:#0A0A0F;--lbl2:rgba(60,60,67,.55);--lbl3:rgba(60,60,67,.28);
   --sep:rgba(60,60,67,.1);--fill:rgba(118,118,128,.1);
   --shadow:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06);
@@ -2269,7 +2269,14 @@ function setLastBackupDate(){
 function daysSinceBackup(){
   const last = getLastBackupDate();
   if(!last) return Infinity;
-  return Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+  // Extract local date string (YYYY-MM-DD) from the ISO timestamp by converting
+  // to local time first, avoiding UTC↔JST boundary issues
+  const lastD = new Date(last);
+  const lastDateStr = `${lastD.getFullYear()}-${String(lastD.getMonth()+1).padStart(2,'0')}-${String(lastD.getDate()).padStart(2,'0')}`;
+  const todayStr = td();
+  const lastMidnight  = new Date(lastDateStr  + 'T00:00:00');
+  const todayMidnight = new Date(todayStr     + 'T00:00:00');
+  return Math.floor((todayMidnight - lastMidnight) / 86400000);
 }
 
 /* Backup reminder state — survives render() calls */
@@ -2336,7 +2343,7 @@ function updateBackupLastText(){
     el.textContent = 'まだバックアップが行われていません';
   } else {
     const d = new Date(last);
-    const fmt = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const fmt = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     const days = daysSinceBackup();
     const ago = days === 0 ? '今日' : `${days}日前`;
     el.textContent = `最終バックアップ：${fmt}（${ago}）`;
@@ -2353,21 +2360,37 @@ function doExport(){
       streak: JSON.parse(localStorage.getItem('fukushu-streak-v1') || 'null'),
     };
     const json = JSON.stringify(payload, null, 2);
+    const filename = `fukushu-backup-${td().replace(/-/g,'')}.json`;
     const blob = new Blob([json], {type: 'application/json'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
+
+    const onSuccess = () => {
+      setLastBackupDate();
+      updateBackupLastText();
+      _backupBannerDays = null;
+      toast(IC.checkCircle, 'バックアップを保存しました');
+      haptic('medium');
+    };
+
+    // iOS PWA: <a download> is silently ignored. Use Web Share API if available.
+    if(navigator.share && navigator.canShare) {
+      const file = new File([blob], filename, {type: 'application/json'});
+      if(navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:'復習マネージャー バックアップ'})
+          .then(onSuccess)
+          .catch(err => { if(err.name !== 'AbortError') toast(IC.alert, 'エクスポートに失敗しました'); });
+        return;
+      }
+    }
+
+    // Desktop / non-iOS: standard blob download
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
     a.href = url;
-    a.download = `fukushu-backup-${td().replace(/-/g,'')}.json`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
-    setLastBackupDate();
-    updateBackupLastText();
-    _backupBannerDays = null;
-    // Don't call render() here — backup sheet is open; banner state is cleared and
-    // will be picked up on next natural render() (e.g. when sheet closes or user acts)
-    toast(IC.checkCircle, 'バックアップを保存しました');
-    haptic('medium');
+    onSuccess();
   } catch { toast(IC.alert, 'エクスポートに失敗しました'); }
 }
 
@@ -2384,14 +2407,41 @@ function handleImportFile(e){
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
+      // Validate structure
       if(!data.units || !Array.isArray(data.units)) throw new Error('invalid');
+      // Validate and sanitize each unit
+      const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+      data.units = data.units.map((u, i) => {
+        if(typeof u !== 'object' || u === null) throw new Error(`unit[${i}] invalid`);
+        const id       = String(u.id || Date.now() + i);
+        const name     = String(u.name || '').trim();
+        if(!name) throw new Error(`unit[${i}] missing name`);
+        const addedDate = DATE_RE.test(u.addedDate) ? u.addedDate : td();
+        const nextDate  = DATE_RE.test(u.nextDate)  ? u.nextDate  : td();
+        const step  = Math.max(0, Math.min(MAX_STEP, parseInt(u.step)  || 0));
+        const done  = Boolean(u.done);
+        const tags  = Array.isArray(u.tags) ? u.tags.filter(t => typeof t === 'string') : [];
+        return { id, name, addedDate, nextDate, step, done,
+                 ...(done ? {completedAt: u.completedAt || Date.now()} : {}),
+                 tags };
+      });
+      // Validate and sanitize tags
+      if(Array.isArray(data.tags)){
+        data.tags = data.tags.filter(t =>
+          t && typeof t === 'object' && typeof t.id === 'string' &&
+          typeof t.name === 'string' && t.name.trim()
+        ).map(t => ({id: t.id, name: t.name.trim(), color: t.color || '#6B7280'}));
+      } else {
+        data.tags = [];
+      }
       _importPending = data;
       const sub = document.getElementById('import-confirm-sub');
-      if(sub) sub.textContent = `${data.units.length} 件の単元、${(data.tags||[]).length} 件のタグを読み込みます。現在のデータはすべて上書きされます。この操作は取り消せません。`;
+      if(sub) sub.textContent = `${data.units.length} 件の単元、${data.tags.length} 件のタグを読み込みます。現在のデータはすべて上書きされます。この操作は取り消せません。`;
       document.getElementById('import-confirm').classList.add('on');
       haptic();
-    } catch { toast(IC.alert, '読み込めないファイルです'); }
+    } catch(err) { toast(IC.alert, '読み込めないファイルです'); }
   };
+  reader.onerror = () => toast(IC.alert, 'ファイルの読み込みに失敗しました');
   reader.readAsText(file);
 }
 
@@ -2409,9 +2459,8 @@ function confirmImport(){
     if(_importPending.streak) localStorage.setItem('fukushu-streak-v1', JSON.stringify(_importPending.streak));
     _importPending = null;
     document.getElementById('import-confirm').classList.remove('on');
-    closeBackupSheet();
-    render();
-    renderSheetTagSel();  // Bug4: refresh tag selectors with new TAGS
+    closeBackupSheet(); // internally calls render()
+    renderSheetTagSel(); // refresh tag selectors with new TAGS
     renderEditTagSel();
     toast(IC.checkCircle, `${U.length} 件のデータを復元しました`);
     haptic('heavy');
@@ -2453,6 +2502,7 @@ function confirmImport(){
     `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
   document.getElementById('inp').addEventListener('keydown',e=>{ if(e.key==='Enter') addUnit(); });
   document.getElementById('date-inp').addEventListener('change',updateSheetInfo);
+
   render();
   renderSheetTagSel();
   setTimeout(checkBackupReminder, 800); // slight delay so UI is settled
@@ -2535,6 +2585,16 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
 
 <!-- Import file picker (hidden) -->
 <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">
+
+<!-- Swipe-to-close for backup-sheet (bound here so DOM is ready) -->
+<script>
+(function(){
+  const sh = document.getElementById('backup-sheet');
+  let sy = 0;
+  sh.addEventListener('touchstart', e => { sy = e.touches[0].clientY; }, {passive:true});
+  sh.addEventListener('touchend',   e => { if(e.changedTouches[0].clientY - sy > 70) closeBackupSheet(); }, {passive:true});
+})();
+</script>
 
 <!-- Import confirm dialog -->
 <div class="import-confirm" id="import-confirm" onclick="if(event.target===this)cancelImport()">
