@@ -161,6 +161,14 @@ button,a,input,[role="button"]{touch-action:manipulation}
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   cursor:pointer
 }
+/* Right-swipe complete hint */
+.swipe-ok-bg{
+  position:absolute;left:0;top:0;bottom:0;width:80px;
+  background:#10B981;z-index:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  border-radius:var(--r) 0 0 var(--r);pointer-events:none
+}
+.swipe-ok-bg svg{color:#fff}
 .swipe-bg-lbl{color:#fff;font-size:11px;font-weight:600;pointer-events:none}
 
 /* ══ Card ══════════════════════════════ */
@@ -519,6 +527,46 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .card.due{ background:linear-gradient(100deg,#EFF6FF 0%,#fff 45%); }
 .card.over{ background:linear-gradient(100deg,#FFF1F0 0%,#fff 45%); }
 
+/* ══ Upcoming schedule accordion ═══════ */
+.sched-toggle{
+  display:flex;align-items:center;gap:5px;
+  background:none;border:none;cursor:pointer;
+  font-family:inherit;font-size:12px;font-weight:600;
+  color:var(--blue);padding:0;margin-top:9px;
+  -webkit-tap-highlight-color:transparent;
+}
+.sched-toggle svg{transition:transform .22s ease;flex-shrink:0}
+.sched-toggle.open svg{transform:rotate(180deg)}
+.sched-body{
+  overflow:hidden;max-height:0;
+  transition:max-height .28s ease;
+}
+.sched-body.open{max-height:600px}
+.sched-list{
+  display:flex;flex-direction:column;
+  margin-top:10px;
+  border-radius:10px;overflow:hidden;
+  border:1px solid var(--sep);
+}
+.sched-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;background:var(--bg);
+  border-bottom:.5px solid var(--sep);
+}
+.sched-row:last-child{border-bottom:none}
+.sched-row.sched-next{background:var(--blue-bg)}
+.sched-row-num{
+  min-width:26px;height:26px;border-radius:50%;
+  background:var(--sep);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:var(--lbl2);flex-shrink:0;
+}
+.sched-row.sched-next .sched-row-num{background:var(--blue);color:#fff}
+.sched-row-date{flex:1;font-size:13px;font-weight:500;color:var(--lbl)}
+.sched-row.sched-next .sched-row-date{color:var(--blue-d);font-weight:700}
+.sched-row-rel{font-size:12px;color:var(--lbl3)}
+.sched-row.sched-next .sched-row-rel{color:var(--blue);font-weight:600}
+
 /* ══ Step dots ══════════════════════════ */
 .step-dots{display:flex;align-items:center;gap:6px;margin-bottom:13px;flex-wrap:wrap}
 .step-dot{
@@ -694,9 +742,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 /* Progress card (in-progress units) */
 .prog-card{
-  background:var(--card);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;
-  display:flex;align-items:center;gap:12px;
+  position:relative;overflow:hidden;
+  background:var(--card);border-radius:var(--r);margin-bottom:10px;
   box-shadow:var(--shadow-sm)
+}
+.prog-card-inner{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;
+  position:relative;z-index:1;
+  background:var(--card);border-radius:var(--r);
+  transition:transform .22s ease;
 }
 .prog-card-icon{
   width:40px;height:40px;border-radius:12px;flex-shrink:0;
@@ -865,6 +920,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .backup-row-arrow{color:var(--lbl3);flex-shrink:0}
 .backup-last{
   text-align:center;font-size:12px;color:var(--lbl3);margin-top:14px;line-height:1.7
+}
+.backup-how-box{
+  background:var(--blue-bg);border:1px solid var(--blue-bd);
+  border-radius:12px;padding:12px 14px;margin-bottom:18px
+}
+.backup-how-title{
+  font-size:13px;font-weight:700;color:var(--blue);margin-bottom:5px
+}
+.backup-how-text{
+  font-size:13px;color:var(--lbl2);line-height:1.65
 }
 .backup-divider{
   display:flex;align-items:center;gap:8px;margin:6px 0 14px;color:var(--lbl3);font-size:11px;font-weight:600;letter-spacing:.5px
@@ -1267,6 +1332,8 @@ function openTagMgr(){
   setFabHidden(true);
   haptic();
 }
+let _tagsMutated = false; // set true by addTag/deleteTag/setTagColor/renameTag
+
 function closeTagMgr(){
   document.getElementById('tag-overlay').classList.remove('on');
   document.getElementById('tag-mgr-sheet').classList.remove('on');
@@ -1274,7 +1341,7 @@ function closeTagMgr(){
   setFabHidden(false);
   renderSheetTagSel();
   renderEditTagSel();
-  render();
+  if(_tagsMutated){ _tagsMutated=false; render(); }
 }
 
 function renderTagMgr(){
@@ -1316,6 +1383,7 @@ function openTagColorEdit(id){
 function setTagColor(id, color){
   const t=TAGS.find(x=>x.id===id); if(!t) return;
   t.color=color; saveTags();
+  _tagsMutated=true;
   _tagEditingId=null;
   renderTagMgr();
 }
@@ -1335,16 +1403,16 @@ function renameTag(id, val){
     if(inp){ inp.value=t.name; inp.classList.add('shake'); setTimeout(()=>inp.classList.remove('shake'),400); }
     haptic('medium'); return;
   }
-  t.name=name; saveTags();
+  t.name=name; saveTags(); _tagsMutated=true;
 }
 function deleteTag(id){
   TAGS=TAGS.filter(t=>t.id!==id);
   // Remove tag from all units
   U.forEach(u=>{ if(u.tags) u.tags=u.tags.filter(tid=>tid!==id); });
   if(activeTagFilter===id) activeTagFilter=null; // reset stale filter
-  save(); saveTags();
+  if(activeTagFilterUp===id) activeTagFilterUp=null;
+  save(); saveTags(); _tagsMutated=true;
   renderTagMgr();
-  // Refresh tag selector in open sheets
   renderSheetTagSel();
   renderEditTagSel();
   haptic();
@@ -1354,9 +1422,9 @@ function addTag(){
   const name=inp.value.trim(); if(!name) return;
   if(TAGS.some(t=>t.name===name)){ inp.classList.add('shake'); setTimeout(()=>inp.classList.remove('shake'),400); haptic('medium'); return; }
   const newTag={id:Date.now().toString(), name, color:_tagPickColor};
-  TAGS.push(newTag); saveTags();
+  TAGS.push(newTag); saveTags(); _tagsMutated=true;
   inp.value='';
-  _tagPickColor=TAG_COLORS[(TAGS.length) % TAG_COLORS.length];
+  _tagPickColor=TAG_COLORS[TAGS.length % TAG_COLORS.length];
   renderTagMgr();
   haptic('medium');
 }
@@ -1414,8 +1482,9 @@ function toggleEditTag(id){
   haptic();
 }
 
-/* Tag filter state */
-let activeTagFilter = null; // null = all
+/* Tag filter state — today と upcoming で独立管理 */
+let activeTagFilter     = null; // 今日タブ用
+let activeTagFilterUp   = null; // 予定タブ用
 
 // 旧バージョンからのデータ移行（v4→v6, v5→v6）
 (()=>{ try {
@@ -1695,6 +1764,7 @@ function del(id){
   }
   const idx=U.findIndex(x=>x.id===id); if(idx<0) return;
   const unit=U[idx];
+  delete _schedOpen[id]; // clean up accordion state
   haptic();
   shrinkOut('w-'+id,()=>{
     U=U.filter(x=>x.id!==id); save(); render();
@@ -1936,18 +2006,72 @@ function celebrate(name){
 
 
 /* ══ Swipe gestures ════════════════════
-   Today cards: left → delete, right → complete
-   Today / Upcoming cards: left → delete only
+   Today cards: left → delete (swipe bg reveal), right → complete flash
+   Upcoming / Done cards: left → delete only
 ══════════════════════════════════════════ */
 let openWrap=null;
 function initSwipe(wrap){
-  initSwipeDeleteOnly(wrap);
+  if(wrap._swipeInit) return;
+  wrap._swipeInit=true;
+  const card=wrap.querySelector('.card'); if(!card) return;
+  let sx=0,sy=0,cx=0,live=false,dir=0;
+  const MAX_L=-80;
+
+  function closeSelf(){
+    cx=0; dir=0;
+    card.style.transition='transform .22s ease';
+    card.style.transform='';
+  }
+  wrap._closeSwipe=closeSelf;
+
+  wrap.addEventListener('touchstart',e=>{
+    if(openWrap&&openWrap!==wrap){ openWrap._closeSwipe?.(); openWrap=null; }
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; live=true; dir=0;
+    card.style.transition='none';
+  },{passive:true});
+
+  wrap.addEventListener('touchmove',e=>{
+    if(!live) return;
+    const dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
+    if(Math.abs(dy)>Math.abs(dx)+8){ live=false; return; }
+    if(dir===0 && Math.abs(dx)>4) dir=dx>0?1:-1;
+    if(dir===1){
+      // Right swipe: show green tint hint (max 30px travel)
+      cx=Math.min(30,dx);
+      card.style.transform=`translateX(${cx}px)`;
+    } else if(dir===-1){
+      if(dx>0&&cx>=0) return;
+      cx=Math.max(MAX_L,Math.min(0,cx+dx));
+      card.style.transform=`translateX(${cx}px)`;
+    }
+  },{passive:true});
+
+  wrap.addEventListener('touchend',()=>{
+    live=false;
+    card.style.transition='transform .22s ease';
+    if(dir===1){
+      // Right swipe threshold: 60px
+      if(cx>=22){
+        card.style.transform='';
+        cx=0; openWrap=null;
+        const id=wrap.dataset.id;
+        if(id) complete(id);
+      } else {
+        card.style.transform=''; cx=0; openWrap=null;
+      }
+      return;
+    }
+    if(dir!==-1){ cx=0; openWrap=null; card.style.transform=''; return; }
+    if(cx<MAX_L*.45){ cx=MAX_L; openWrap=wrap; haptic(); }
+    else { cx=0; openWrap=null; }
+    card.style.transform=cx?`translateX(${cx}px)`:'';
+  });
 }
 /* Left-swipe only (for upcoming cards — no complete action) */
 function initSwipeDeleteOnly(wrap){
   if(wrap._swipeInit) return;
   wrap._swipeInit=true;
-  const card=wrap.querySelector('.card'); if(!card) return;
+  const card=wrap.querySelector('.card')||wrap.querySelector('.prog-card-inner'); if(!card) return;
   let sx=0,sy=0,cx=0,live=false,dir=0;
   const MAX_L=-80;
 
@@ -2033,6 +2157,7 @@ function render(){
   if(_hadNew) save();
 
   document.querySelectorAll('#p-today .cw[data-id]').forEach(w=>initSwipe(w));
+  document.querySelectorAll('#p-done .cw[data-id]').forEach(w=>initSwipeDeleteOnly(w));
   restoreScroll(); // B2 fix: restore scroll after rebuild
 }
 
@@ -2166,10 +2291,10 @@ function rUpcoming(list){
   // Tag filter bar
   const usedTagIds=[...new Set(list.flatMap(u=>u.tags||[]))].filter(id=>TAGS.find(t=>t.id===id));
   const tagFilterHtml=usedTagIds.length?`<div class="tag-filter-bar">
-    <button class="tag-filter-btn tag-filter-btn-all${activeTagFilter===null?' on':''}"
+    <button class="tag-filter-btn tag-filter-btn-all${activeTagFilterUp===null?' on':''}"
       onclick="setTagFilter(null)">すべて</button>
     ${usedTagIds.map(id=>{const t=TAGS.find(x=>x.id===id);if(!t)return'';
-      const on=activeTagFilter===id;
+      const on=activeTagFilterUp===id;
       return `<button class="tag-filter-btn${on?' on':''}"
         style="${on?`background:${t.color};border-color:${t.color}`:''}"
         onclick="setTagFilter('${id}')">
@@ -2198,7 +2323,7 @@ function rUpcoming(list){
   }
 
   const q=searchQ.trim().toLowerCase();
-  let filtered=activeTagFilter?list.filter(u=>(u.tags||[]).includes(activeTagFilter)):list;
+  let filtered=activeTagFilterUp?list.filter(u=>(u.tags||[]).includes(activeTagFilterUp)):list;
   if(q) filtered=filtered.filter(u=>u.name.toLowerCase().includes(q));
   let cardsHtml='',lastG='',isFirst=true;
   if(filtered.length){
@@ -2206,13 +2331,13 @@ function rUpcoming(list){
       const d=diff(u.nextDate);
       const g=d<=7?'今週':d<=14?'来週':'2週間以降';
       // グループヘッダーは検索・タグフィルターなしのときのみ表示
-      if(!q&&!activeTagFilter&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
+      if(!q&&!activeTagFilterUp&&g!==lastG){ cardsHtml+=`<div class="sec${isFirst?' sec-first':''}">${g}</div>`; lastG=g; isFirst=false; }
       cardsHtml+=cHtmlUpcoming(u);
     });
   } else {
     const _emptyMsg = searchQ
       ? `「${esc(searchQ)}」に一致する単元は<br>見つかりませんでした`
-      : activeTagFilter
+      : activeTagFilterUp
         ? `選択中のタグに一致する単元はありません`
         : `該当する単元はありません`;
     cardsHtml=`<div class="empty" style="padding:28px 0">
@@ -2326,8 +2451,8 @@ function rDone(doneList){
         const uStatus = u.done
           ? `<span style="color:#059669;font-weight:600">全完了</span>`
           : u.nextDate<=td()
-            ? `<span style="color:#DC2626;font-weight:600">復習待ち · ${STEPS[u.step]}</span>`
-            : `${STEPS[u.step]} · 次回 ${fmtShortText(u.nextDate)}`;
+            ? `<span style="color:#DC2626;font-weight:600">復習待ち · ${STEPS[u.step] || '最終回'}</span>`
+            : `${STEPS[u.step] || '最終回'} · 次回 ${fmtShortText(u.nextDate)}`;
         return `<div class="tag-prog-unit-row">
           ${uIcon}
           <div class="tag-prog-unit-body">
@@ -2414,7 +2539,11 @@ function rDone(doneList){
         const cls=i<u.step?'done':i===u.step?'active':'';
         return `<span class="step-dot ${cls}"></span>`;
       }).join('');
-      return `<div class="prog-card" id="w-${u.id}">
+      return `<div class="prog-card cw" id="w-${u.id}" data-id="${u.id}">
+        <div class="swipe-bg" onclick="del('${u.id}')">
+          ${IC.trash}<span class="swipe-bg-lbl">削除</span>
+        </div>
+        <div class="prog-card-inner">
         <div class="prog-card-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${ringCol}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         </div>
@@ -2423,13 +2552,14 @@ function rDone(doneList){
           <div class="prog-card-meta">${nextInfo}</div>
           <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px">
             <div class="step-dots" style="margin-bottom:0;flex-wrap:wrap">${stepDotsHtml}</div>
-            <span style="font-size:11px;color:var(--lbl3);margin-left:2px;white-space:nowrap">${STEPS[u.step]}</span>
+            <span style="font-size:11px;color:var(--lbl3);margin-left:2px;white-space:nowrap">${STEPS[u.step]||'完了'}</span>
           </div>
           <div class="prog-bar-wrap">
             <div class="prog-bar-fill" style="width:${pct}%"></div>
           </div>
         </div>
         <div class="prog-card-pct">${pct}%</div>
+        </div>
       </div>`;
     }).join('');
   }
@@ -2451,6 +2581,39 @@ function rDone(doneList){
   el.innerHTML=html;
 }
 
+/* ── Upcoming schedule helpers ── */
+/* Open state map — survives render() calls (keyed by unit id) */
+let _schedOpen = {};
+
+function futureSchedule(u){
+  // Returns array of {stepIdx, date, daysFromNow} for remaining steps
+  const result = [];
+  const today = td();
+  // The next scheduled date is u.nextDate (step u.step)
+  // After that, each step adds INTS[step] days from the *completion* date.
+  // We approximate: step N is done on its nextDate, step N+1 = nextDate + INTS[N+1]
+  let baseDate = u.nextDate;
+  for(let s = u.step; s < MAX_STEP; s++){
+    const d = diff(baseDate);
+    result.push({ stepIdx: s, date: baseDate, daysFromNow: d });
+    if(s + 1 < MAX_STEP){
+      baseDate = addD(baseDate, INTS[s + 1]);
+    }
+  }
+  return result;
+}
+
+function toggleSched(id){
+  const btn  = document.getElementById('sched-btn-'  + id);
+  const body = document.getElementById('sched-body-' + id);
+  if(!btn || !body) return;
+  _schedOpen[id] = !_schedOpen[id];
+  const open = _schedOpen[id];
+  body.classList.toggle('open', open);
+  btn.classList.toggle('open', open);
+  btn.querySelector('.sched-btn-lbl').textContent = open ? '予定を隠す' : '今後の予定を見る';
+}
+
 /* ── Card HTML ── */
 function cHtml(u){
   const d=diff(u.nextDate), over=d<0, due=d===0;
@@ -2466,6 +2629,9 @@ function cHtml(u){
   }).join('') + `<span class="step-dot-lbl${u.step<MAX_STEP?' active':''}">${u.step<MAX_STEP?STEPS[u.step]:'完了'}</span>`;
 
   return `<div class="cw${newCls}" id="w-${u.id}" data-id="${u.id}">
+    <div class="swipe-ok-bg">
+      ${IC.check}<span class="swipe-bg-lbl" style="color:#fff">完了</span>
+    </div>
     <div class="swipe-bg" onclick="del('${u.id}')">
       ${IC.trash}<span class="swipe-bg-lbl">削除</span>
     </div>
@@ -2494,6 +2660,21 @@ function cHtmlUpcoming(u){
     return `<span class="step-dot ${cls}"></span>`;
   }).join('') + `<span class="step-dot-lbl${u.step<MAX_STEP?' active':''}">${u.step<MAX_STEP?STEPS[u.step]:'完了'}</span>`;
 
+  // Build future schedule rows
+  const sched = futureSchedule(u);
+  const schedRowsHtml = sched.map(({stepIdx, date, daysFromNow}, i)=>{
+    const isNext = i === 0;
+    const relLbl = daysFromNow === 0 ? '今日' : daysFromNow === 1 ? '明日' : `${daysFromNow}日後`;
+    return `<div class="sched-row${isNext?' sched-next':''}">
+      <div class="sched-row-num">${stepIdx+1}</div>
+      <div class="sched-row-date">${fmtShortText(date)}</div>
+      <div class="sched-row-rel">${relLbl}</div>
+    </div>`;
+  }).join('');
+
+  const remainCount = MAX_STEP - u.step;
+  const isOpen = !!_schedOpen[u.id];
+
   return `<div class="cw${newCls}" id="w-${u.id}" data-id="${u.id}">
     <div class="swipe-bg" onclick="del('${u.id}')">
       ${IC.trash}<span class="swipe-bg-lbl">削除</span>
@@ -2506,6 +2687,14 @@ function cHtmlUpcoming(u){
       ${(u.tags&&u.tags.length)?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${u.tags.map(tid=>tagHtml(tid)).join('')}</div>`:''}
       <div class="card-when">${IC.calendar} ${fmtShort(u.nextDate)}<span style="color:var(--lbl3);font-size:12px;margin-left:2px">· ${d}日後</span></div>
       <div class="step-dots" style="margin-bottom:0">${dotsHtml}</div>
+      <button class="sched-toggle${isOpen?' open':''}" id="sched-btn-${u.id}" onclick="toggleSched('${u.id}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="sched-btn-lbl">${isOpen?'予定を隠す':'今後の予定を見る'}</span>
+        <span style="color:var(--lbl3);font-weight:500">（残り${remainCount}回）</span>
+      </button>
+      <div class="sched-body${isOpen?' open':''}" id="sched-body-${u.id}">
+        <div class="sched-list">${schedRowsHtml}</div>
+      </div>
     </div>
   </div>`;
 }
@@ -2521,7 +2710,7 @@ function setTodayTagFilter(id){
 }
 
 function setTagFilter(id){
-  activeTagFilter=id;
+  activeTagFilterUp=id;
   const upL=U.filter(u=>!u.done&&u.nextDate>td()).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
   rUpcoming(upL);
   haptic();
@@ -2529,20 +2718,20 @@ function setTagFilter(id){
 
 function bindSearch(el){
   const inp=el.querySelector('#search-inp'); if(!inp) return;
-  // Restore cursor after re-render, but skip if another element has focus (e.g. IME in progress)
   if(searchQ && document.activeElement !== document.body){
-    // Only restore focus if the search input was previously focused
-    // Use a microtask so any pending compositionend has already fired
     Promise.resolve().then(()=>{
-      if(!document.querySelector('#search-inp')) return; // panel may have changed
+      if(!document.querySelector('#search-inp')) return;
       inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
     });
   }
-  inp.addEventListener('input',e=>{
-    if(e.isComposing) return; // skip mid-IME to avoid interrupting Japanese input
+  let _composing = false;
+  inp.addEventListener('compositionstart', ()=>{ _composing=true; });
+  inp.addEventListener('compositionend',e=>{
+    _composing=false;
     searchQ=e.target.value; render();
   });
-  inp.addEventListener('compositionend',e=>{
+  inp.addEventListener('input',e=>{
+    if(_composing || e.isComposing) return;
     searchQ=e.target.value; render();
   });
   inp.addEventListener('search',e=>{ searchQ=e.target.value; render(); });
@@ -2594,14 +2783,15 @@ function switchTab(btn){
   // Hide FAB on settings tab
   setFabHidden(id === 'settings');
 
-  // Clear tag filter and search when leaving their respective tabs
+  // Clear tag filter and search only for the relevant tab being left
   let needRender = false;
-  if(activeTagFilter !== null){ activeTagFilter = null; needRender = true; }
+  if(id !== 'today'    && activeTagFilter   !== null){ activeTagFilter   = null; needRender = true; }
+  if(id !== 'upcoming' && activeTagFilterUp !== null){ activeTagFilterUp = null; needRender = true; }
   if(id !== 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
   if(id === 'settings'){
     renderSettings();
     // No render() needed for settings tab - renderSettings() handles its own panel
-  } else if(needRender || id === 'today' || id === 'upcoming' || id === 'done'){
+  } else if(needRender || !document.getElementById('p-'+id)?.innerHTML.trim()){
     render();
   }
 }
@@ -2778,20 +2968,21 @@ function checkBackupReminder(){
 function backupBannerHtml(){
   if(_backupBannerDays === null) return '';
   const days = _backupBannerDays;
-  const daysText = days === Infinity ? 'まだバックアップしていません' : `最後のバックアップから ${days} 日経過しています`;
+  const daysText = days === Infinity
+    ? 'まだデータを保存していません'
+    : `最後の保存から ${days} 日が経ちました`;
   return `<div class="backup-reminder" id="backup-reminder-banner"
     onclick="if(!event.target.closest('.backup-reminder-close')){openBackupSheet();}">
     <div class="backup-reminder-icon">💾</div>
     <div class="backup-reminder-body">
-      <div class="backup-reminder-ttl">バックアップを推奨します</div>
-      <div class="backup-reminder-sub">${daysText}。タップしてデータを保存しませんか？</div>
+      <div class="backup-reminder-ttl">データのバックアップをしよう！</div>
+      <div class="backup-reminder-sub">${daysText}。タップして復習記録を保存しましょう。</div>
     </div>
     <button class="backup-reminder-close" onclick="event.stopPropagation();dismissBackupReminder()" aria-label="閉じる">✕</button>
   </div>`;
 }
 
-function dismissBackupReminder(e){
-  if(e) e.stopPropagation();
+function dismissBackupReminder(){
   _backupBannerDays = null;
   // Fade out immediately, then remove from DOM by triggering a render
   const el = document.getElementById('backup-reminder-banner');
@@ -2821,13 +3012,13 @@ function updateBackupLastText(){
   const el = document.getElementById('backup-last-text');
   if(!el) return;
   if(!last){
-    el.textContent = 'まだバックアップが行われていません';
+    el.innerHTML = '<span style="color:#B45309;font-weight:600">⚠️ まだ一度も保存していません。下のボタンから保存しましょう！</span>';
   } else {
     const d = new Date(last);
     const fmt = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     const days = daysSinceBackup();
-    const ago = days === 0 ? '今日' : `${days}日前`;
-    el.textContent = `最終バックアップ：${fmt}（${ago}）`;
+    const ago = days === 0 ? '今日保存済み ✅' : `${days}日前に保存`;
+    el.textContent = `最後に保存した日時：${fmt}（${ago}）`;
   }
 }
 
@@ -2848,7 +3039,7 @@ function doExport(){
       setLastBackupDate();
       updateBackupLastText();
       _backupBannerDays = null;
-      toast(IC.checkCircle, 'バックアップを保存しました');
+      toast(IC.checkCircle, 'データを保存しました 💾');
       haptic('medium');
     };
 
@@ -2858,7 +3049,7 @@ function doExport(){
       if(navigator.canShare({files:[file]})){
         navigator.share({files:[file], title:'復習マネージャー バックアップ'})
           .then(onSuccess)
-          .catch(err => { if(err.name !== 'AbortError') toast(IC.alert, 'エクスポートに失敗しました'); });
+          .catch(err => { if(err.name !== 'AbortError') toast(IC.alert, '保存に失敗しました。もう一度お試しください'); });
         return;
       }
     }
@@ -2872,7 +3063,7 @@ function doExport(){
     a.click();
     setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
     onSuccess();
-  } catch { toast(IC.alert, 'エクスポートに失敗しました'); }
+  } catch { toast(IC.alert, '保存に失敗しました。もう一度お試しください'); }
 }
 
 let _importPending = null;
@@ -2918,12 +3109,12 @@ function handleImportFile(e){
       }
       _importPending = data;
       const sub = document.getElementById('import-confirm-sub');
-      if(sub) sub.textContent = `${data.units.length} 件の単元、${data.tags.length} 件のタグを読み込みます。現在のデータはすべて上書きされます。この操作は取り消せません。`;
+      if(sub) sub.textContent = `${data.units.length} 件の単元・${data.tags.length} 件のタグが見つかりました。読み込むと今のデータはすべて上書きされます。よろしいですか？`;
       document.getElementById('import-confirm').classList.add('on');
       haptic();
-    } catch(err) { toast(IC.alert, '読み込めないファイルです'); }
+    } catch(err) { toast(IC.alert, 'このファイルは読み込めません。バックアップファイルを選んでください'); }
   };
-  reader.onerror = () => toast(IC.alert, 'ファイルの読み込みに失敗しました');
+  reader.onerror = () => toast(IC.alert, 'ファイルを開けませんでした。もう一度試してください');
   reader.readAsText(file);
 }
 
@@ -2949,9 +3140,9 @@ function confirmImport(){
     renderSheetTagSel(); // refresh tag selectors with new TAGS
     renderEditTagSel();
     renderSettings();   // refresh settings tab (tag count etc.)
-    toast(IC.checkCircle, `${U.length} 件のデータを復元しました`);
+    toast(IC.checkCircle, `${U.length} 件のデータを読み込みました ✅`);
     haptic('heavy');
-  } catch { toast(IC.alert, 'インポートに失敗しました'); }
+  } catch { toast(IC.alert, '読み込みに失敗しました。もう一度試してください'); }
 }
 
 /* ══════════════════════════════════════════
@@ -3135,8 +3326,8 @@ function renderSettings(){
       <div class="settings-row" onclick="openBackupSheet()" style="cursor:pointer">
         <div class="settings-row-icon" style="background:#EFF6FF">💾</div>
         <div class="settings-row-body">
-          <div class="settings-row-title">バックアップ</div>
-          <div class="settings-row-sub">データのエクスポート・インポート</div>
+          <div class="settings-row-title">データの保存・読み込み</div>
+          <div class="settings-row-sub">バックアップして記録を守ろう</div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lbl3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
@@ -3196,9 +3387,14 @@ function renderSettings(){
   const d=new Date();
   document.getElementById('nav-date').textContent=
     `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）`;
-  document.getElementById('inp').addEventListener('keydown',e=>{ if(e.key==='Enter') addUnit(); });
-  document.getElementById('date-inp').addEventListener('change',updateSheetInfo);
-  document.getElementById('tag-add-inp').addEventListener('keydown',e=>{ if(e.key==='Enter') addTag(); });
+  const _inp = document.getElementById('inp');
+  if(_inp) _inp.addEventListener('keydown',e=>{ if(e.key==='Enter') addUnit(); });
+  const _dateInp = document.getElementById('date-inp');
+  if(_dateInp) _dateInp.addEventListener('change',updateSheetInfo);
+  // tag-add-inp is defined after this script block, so bind via event delegation
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && e.target && e.target.id==='tag-add-inp') addTag();
+  });
 
   // 日付をまたいでバックグラウンドから復帰した際にUIを更新する
   let _lastActiveDate = td();
@@ -3265,31 +3461,36 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
 <div class="backup-sheet" id="backup-sheet">
   <div class="sheet-pull"></div>
   <div class="backup-body">
-    <div class="backup-ttl">データバックアップ</div>
+    <div class="backup-ttl">📦 データの保存・読み込み</div>
     <div class="backup-sub" id="backup-last-text">読み込み中…</div>
 
-    <div class="backup-divider">エクスポート</div>
+    <div class="backup-how-box">
+      <div class="backup-how-title">💡 バックアップとは？</div>
+      <div class="backup-how-text">スマホを機種変更したり、アプリのデータが消えてしまったときでも、あなたの復習記録を元に戻せるようにするための機能です。<br>定期的に保存しておくことをおすすめします。</div>
+    </div>
+
+    <div class="backup-divider">データを保存する（バックアップ）</div>
     <div class="backup-row" onclick="doExport()">
       <div class="backup-row-icon" style="background:#EFF6FF">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </div>
       <div class="backup-row-body">
-        <div class="backup-row-ttl">JSONファイルに保存</div>
-        <div class="backup-row-sub">全データをファイルとしてダウンロードします</div>
+        <div class="backup-row-ttl">今すぐ保存する</div>
+        <div class="backup-row-sub">タップするとバックアップファイルが作られます。ファイルアプリやメモアプリに保存してください。</div>
       </div>
       <div class="backup-row-arrow">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
 
-    <div class="backup-divider" style="margin-top:16px">インポート</div>
+    <div class="backup-divider" style="margin-top:16px">保存したデータを読み込む（復元）</div>
     <div class="backup-row" onclick="triggerImport()">
       <div class="backup-row-icon" style="background:#FFF7ED">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </div>
       <div class="backup-row-body">
-        <div class="backup-row-ttl">JSONファイルから復元</div>
-        <div class="backup-row-sub" style="color:#B45309">⚠️ 現在のデータが上書きされます</div>
+        <div class="backup-row-ttl">保存済みデータを読み込む</div>
+        <div class="backup-row-sub">以前に保存したバックアップファイルを選んでください。<br><span style="color:#B45309;font-weight:600">⚠️ 現在のデータは上書きされます</span></div>
       </div>
       <div class="backup-row-arrow">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -3314,11 +3515,11 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
 <!-- Import confirm dialog -->
 <div class="import-confirm" id="import-confirm" onclick="if(event.target===this)cancelImport()">
   <div class="import-confirm-box">
-    <div class="import-confirm-ttl">データを復元しますか？</div>
-    <div class="import-confirm-sub" id="import-confirm-sub">現在のデータはすべて上書きされます。この操作は取り消せません。</div>
+    <div class="import-confirm-ttl">データを読み込みますか？</div>
+    <div class="import-confirm-sub" id="import-confirm-sub">保存済みのデータを読み込みます。現在のデータはすべて上書きされます。この操作は取り消せません。</div>
     <div class="import-confirm-acts">
       <button class="import-confirm-cancel" onclick="cancelImport()">キャンセル</button>
-      <button class="import-confirm-ok" onclick="confirmImport()">上書きして復元</button>
+      <button class="import-confirm-ok" onclick="confirmImport()">上書きして読み込む</button>
     </div>
   </div>
 </div>
