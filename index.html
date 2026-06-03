@@ -796,6 +796,95 @@ button,a,input,[role="button"]{touch-action:manipulation}
 }
 .tag-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
+/* ══ Mini calendar (予定タブ) ══════════════ */
+.cal-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--card);border-radius:var(--r);
+  padding:13px 16px;margin-bottom:10px;
+  box-shadow:var(--shadow-sm);cursor:pointer;
+  border:none;width:100%;text-align:left;font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .12s;
+}
+.cal-toggle:active{background:var(--fill)}
+.cal-toggle-left{display:flex;align-items:center;gap:10px}
+.cal-toggle-icon{
+  width:34px;height:34px;border-radius:10px;
+  background:var(--blue-bg);display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;color:var(--blue)
+}
+.cal-toggle-label{font-size:15px;font-weight:700;color:var(--lbl)}
+.cal-toggle-sub{font-size:12px;color:var(--lbl2);margin-top:1px}
+.cal-toggle-chev{
+  color:var(--lbl3);display:flex;transition:transform .22s ease;flex-shrink:0
+}
+.cal-toggle-chev.open{transform:rotate(180deg)}
+
+.cal-wrap{
+  background:var(--card);border-radius:var(--r);
+  margin-bottom:10px;overflow:hidden;
+  box-shadow:var(--shadow-sm);
+  max-height:0;
+  transition:max-height .3s cubic-bezier(.25,.46,.45,.94),opacity .2s;
+  opacity:0;pointer-events:none;
+}
+.cal-wrap.open{max-height:380px;opacity:1;pointer-events:auto}
+
+.cal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 10px;
+}
+.cal-title{font-size:15px;font-weight:700;color:var(--lbl);font-family:'Outfit',sans-serif}
+.cal-nav-btn{
+  background:var(--fill);border:none;border-radius:8px;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;color:var(--lbl2);flex-shrink:0;font-family:inherit;
+  transition:background .12s
+}
+.cal-nav-btn:active{background:var(--sep)}
+.cal-nav-btn:disabled{opacity:.3;pointer-events:none}
+
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  padding:0 10px 14px;gap:2px;
+}
+.cal-dow{
+  text-align:center;font-size:10px;font-weight:700;
+  color:var(--lbl3);padding:0 0 6px;letter-spacing:.5px;
+}
+.cal-dow.sun{color:#EF4444}
+.cal-dow.sat{color:#3B82F6}
+
+.cal-cell{
+  aspect-ratio:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  border-radius:9px;cursor:pointer;position:relative;
+  transition:background .1s;
+  min-width:0;
+}
+.cal-cell:active{background:var(--fill)}
+.cal-cell.other-month .cal-num{color:var(--lbl3)}
+.cal-cell.today .cal-num{
+  background:var(--blue);color:#fff;border-radius:50%;
+  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+}
+.cal-cell.has-event .cal-dot{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--blue);margin-top:2px;flex-shrink:0;
+}
+.cal-cell.today .cal-dot{background:#fff;opacity:.8}
+.cal-cell.overdue .cal-dot{background:#EF4444}
+.cal-num{
+  font-size:13px;font-weight:600;color:var(--lbl);
+  line-height:1;width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+}
+.cal-cell.sun .cal-num{color:#EF4444}
+.cal-cell.today .cal-num{color:#fff}
+.cal-cell.sat .cal-num{color:#3B82F6}
+.cal-dot{display:none}
+.cal-cell.has-event .cal-dot{display:block}
+
 /* Tag filter bar */
 .tag-filter-bar{
   display:flex;gap:6px;overflow-x:auto;padding:0 0 8px;
@@ -2288,6 +2377,33 @@ function rUpcoming(list){
   let adjHtml='';
   if(!searchQ&&!adjDismissed){ const m=analyzeLoad(); if(m.length) adjHtml=adjBannerHtml(m); }
 
+  // ── カレンダービュー ──
+  _calInit();
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const now = new Date();
+  const isPrevDisabled = (_calYear === now.getFullYear() && _calMonth === now.getMonth());
+  const calHtml = `
+  <button class="cal-toggle" onclick="calToggle()" aria-label="カレンダービューを切り替え">
+    <div class="cal-toggle-left">
+      <div class="cal-toggle-icon">${IC.calendarLg}</div>
+      <div>
+        <div class="cal-toggle-label">カレンダー</div>
+        <div id="cal-toggle-sub" class="cal-toggle-sub">${_calOpen ? `${_calYear}年 ${months[_calMonth]}` : 'タップして展開'}</div>
+      </div>
+    </div>
+    <div id="cal-chev" class="cal-toggle-chev${_calOpen?' open':''}">
+      ${IC.chevDown}
+    </div>
+  </button>
+  <div id="cal-wrap" class="cal-wrap${_calOpen?' open':''}">
+    <div class="cal-header">
+      <button id="cal-prev" class="cal-nav-btn" onclick="calNav(-1)" aria-label="前の月"${isPrevDisabled?' disabled':''}>‹</button>
+      <div id="cal-title" class="cal-title">${_calYear}年 ${months[_calMonth]}</div>
+      <button class="cal-nav-btn" onclick="calNav(1)" aria-label="次の月">›</button>
+    </div>
+    <div id="cal-grid" class="cal-grid">${_buildCalGridHtml(_calYear, _calMonth)}</div>
+  </div>`;
+
   // Tag filter bar
   const usedTagIds=[...new Set(list.flatMap(u=>u.tags||[]))].filter(id=>TAGS.find(t=>t.id===id));
   const tagFilterHtml=usedTagIds.length?`<div class="tag-filter-bar">
@@ -2302,7 +2418,7 @@ function rUpcoming(list){
       </button>`}).join('')}
   </div>`:'';
 
-  const barHtml=`<div class="search-wrap">
+  const barHtml=calHtml+`<div class="search-wrap">
     <div class="search-box">
       <span style="opacity:.4;display:flex;flex-shrink:0">${IC.search}</span>
       <input class="search-inp" id="search-inp" type="search" placeholder="単元名で検索…"
@@ -2579,6 +2695,173 @@ function rDone(doneList){
   }
 
   el.innerHTML=html;
+}
+
+/* ── Mini calendar state (予定タブ) ── */
+let _calOpen  = false;   // トグル開閉
+let _calYear  = null;    // 表示中の年（null = 初期化前）
+let _calMonth = null;    // 表示中の月（0-11）
+
+function _calInit(){
+  if(_calYear !== null) return;
+  const now = new Date();
+  _calYear  = now.getFullYear();
+  _calMonth = now.getMonth();
+}
+
+function calToggle(){
+  _calOpen = !_calOpen;
+  // チェブロンとラッパーをその場で切り替え（render()不要でスクロール位置が保たれる）
+  const chev = document.getElementById('cal-chev');
+  const wrap = document.getElementById('cal-wrap');
+  const sub  = document.getElementById('cal-toggle-sub');
+  if(chev) chev.classList.toggle('open', _calOpen);
+  if(wrap) wrap.classList.toggle('open', _calOpen);
+  if(sub && !_calOpen) sub.textContent = 'タップして展開';
+  if(sub && _calOpen){
+    const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    sub.textContent = `${_calYear}年 ${months[_calMonth]}`;
+  }
+  haptic();
+}
+
+function calNav(delta){
+  _calInit();
+  _calMonth += delta;
+  if(_calMonth < 0){ _calMonth = 11; _calYear--; }
+  if(_calMonth > 11){ _calMonth = 0;  _calYear++; }
+  _renderCalGrid();
+  haptic();
+}
+
+/* イベントがある日付の Set を返す純粋関数 */
+function _calEventMap(){
+  // { 'YYYY-MM-DD': 'overdue' | 'future' }
+  const map = {};
+  const today = td();
+  U.filter(u => !u.done).forEach(u => {
+    const d = u.nextDate;
+    if(!d) return;
+    map[d] = d < today ? 'overdue' : 'future';
+  });
+  return map;
+}
+
+/* カレンダーグリッドだけ再描画（月ナビ時に使用） */
+function _renderCalGrid(){
+  const gridEl = document.getElementById('cal-grid');
+  const titleEl = document.getElementById('cal-title');
+  const subEl   = document.getElementById('cal-toggle-sub');
+  const prevBtn = document.getElementById('cal-prev');
+  if(!gridEl || !titleEl) return;
+
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  titleEl.textContent = `${_calYear}年 ${months[_calMonth]}`;
+  if(subEl && _calOpen) subEl.textContent = `${_calYear}年 ${months[_calMonth]}`;
+
+  // 今月より前には戻れない
+  const now = new Date();
+  const isCurrentOrFuture = _calYear > now.getFullYear() ||
+    (_calYear === now.getFullYear() && _calMonth >= now.getMonth());
+  if(prevBtn) prevBtn.disabled = !isCurrentOrFuture ||
+    (_calYear === now.getFullYear() && _calMonth === now.getMonth());
+
+  gridEl.innerHTML = _buildCalGridHtml(_calYear, _calMonth);
+}
+
+/* グリッドのHTML文字列を生成する純粋関数 */
+function _buildCalGridHtml(year, month){
+  const today = td();
+  const evMap = _calEventMap();
+
+  // 1日の曜日と末日
+  const firstDay = new Date(year, month, 1).getDay(); // 0=日
+  const lastDate = new Date(year, month + 1, 0).getDate();
+
+  // 前月末日
+  const prevLastDate = new Date(year, month, 0).getDate();
+
+  const DOW_LABELS = ['日','月','火','水','木','金','土'];
+  let html = DOW_LABELS.map((d,i) =>
+    `<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`
+  ).join('');
+
+  // セルの総数（先頭空白含め6週分 or 5週分）
+  const totalCells = firstDay + lastDate;
+  const weeks = Math.ceil(totalCells / 7);
+
+  for(let i = 0; i < weeks * 7; i++){
+    let cellDate, isOther = false;
+    if(i < firstDay){
+      // 前月
+      cellDate = prevLastDate - firstDay + 1 + i;
+      isOther = true;
+    } else if(i >= firstDay + lastDate){
+      // 翌月
+      cellDate = i - firstDay - lastDate + 1;
+      isOther = true;
+    } else {
+      cellDate = i - firstDay + 1;
+    }
+
+    let dateStr = '';
+    if(!isOther){
+      dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(cellDate).padStart(2,'0')}`;
+    }
+
+    const isToday   = dateStr === today;
+    const evType    = dateStr ? evMap[dateStr] : null;
+    const hasEvent  = !!evType;
+    const isOverdue = evType === 'overdue';
+    const dow       = i % 7; // 0=日,6=土
+
+    let cls = 'cal-cell';
+    if(isOther)   cls += ' other-month';
+    if(isToday)   cls += ' today';
+    if(hasEvent)  cls += ' has-event';
+    if(isOverdue) cls += ' overdue';
+    if(dow === 0 && !isToday) cls += ' sun';
+    if(dow === 6 && !isToday) cls += ' sat';
+
+    const onclick = (dateStr && hasEvent)
+      ? `onclick="calJumpToDate('${dateStr}')"`
+      : '';
+
+    html += `<div class="${cls}" ${onclick}>
+      <div class="cal-num">${cellDate}</div>
+      <div class="cal-dot"></div>
+    </div>`;
+  }
+  return html;
+}
+
+/* 日付セルタップ → 該当カードへスクロール */
+function calJumpToDate(dateStr){
+  // 1. カレンダーを閉じる
+  _calOpen = false;
+  const chev = document.getElementById('cal-chev');
+  const wrap = document.getElementById('cal-wrap');
+  const sub  = document.getElementById('cal-toggle-sub');
+  if(chev) chev.classList.remove('open');
+  if(wrap) wrap.classList.remove('open');
+  if(sub)  sub.textContent = 'タップして展開';
+  haptic();
+
+  // 2. 対象カードを探してスクロール（少し待ってDOMが確定してから）
+  requestAnimationFrame(() => {
+    const panel = document.getElementById('p-upcoming');
+    if(!panel) return;
+    // カードは data-id 属性を持つ。unit の nextDate が dateStr のものを探す
+    const target = U.find(u => !u.done && u.nextDate === dateStr);
+    if(!target) return;
+    const card = panel.querySelector(`[data-id="${target.id}"]`);
+    if(!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // フラッシュして視認性UP
+    const inner = card.querySelector('.card') || card;
+    inner.classList.add('flash');
+    setTimeout(() => inner.classList.remove('flash'), 500);
+  });
 }
 
 /* ── Upcoming schedule helpers ── */
