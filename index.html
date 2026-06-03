@@ -860,7 +860,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
   align-items:center;justify-content:center;
   border-radius:9px;cursor:pointer;position:relative;
   transition:background .1s;
-  min-width:0;
+  min-width:0;padding-bottom:2px;
 }
 .cal-cell:active{background:var(--fill)}
 .cal-cell.other-month .cal-num{color:var(--lbl3)}
@@ -868,22 +868,27 @@ button,a,input,[role="button"]{touch-action:manipulation}
   background:var(--blue);color:#fff;border-radius:50%;
   width:26px;height:26px;display:flex;align-items:center;justify-content:center;
 }
-.cal-cell.has-event .cal-dot{
-  width:5px;height:5px;border-radius:50%;
-  background:var(--blue);margin-top:2px;flex-shrink:0;
-}
-.cal-cell.today .cal-dot{background:#fff;opacity:.8}
-.cal-cell.overdue .cal-dot{background:#EF4444}
 .cal-num{
   font-size:13px;font-weight:600;color:var(--lbl);
-  line-height:1;width:26px;height:26px;
+  line-height:1;width:26px;height:26px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
 }
 .cal-cell.sun .cal-num{color:#EF4444}
-.cal-cell.today .cal-num{color:#fff}
+.cal-cell.today .cal-num{background:var(--blue);color:#fff}
 .cal-cell.sat .cal-num{color:#3B82F6}
-.cal-dot{display:none}
-.cal-cell.has-event .cal-dot{display:block}
+.cal-cell.other-month .cal-num{color:var(--lbl3)}
+/* タグ色の四角ピップ列 */
+.cal-pips{
+  display:flex;align-items:center;justify-content:center;
+  gap:2px;margin-top:3px;min-height:6px;flex-wrap:nowrap;
+}
+.cal-pip{
+  width:6px;height:6px;border-radius:2px;flex-shrink:0;
+}
+.cal-pip-more{
+  font-size:8px;font-weight:700;color:var(--lbl3);
+  line-height:1;letter-spacing:-.5px;
+}
 
 /* Tag filter bar */
 .tag-filter-bar{
@@ -2184,9 +2189,8 @@ function initSwipeDeleteOnly(wrap){
     if(dir===0 && Math.abs(dx)>4) dir=dx>0?1:-1;
     if(dir!==-1) return; // only allow left swipe
     if(dx>0&&cx>=0) return;
-    cx=Math.max(MAX_L,Math.min(0,cx+dx));
+    cx=Math.max(MAX_L,Math.min(0,dx));
     card.style.transform=`translateX(${cx}px)`;
-    sx=e.touches[0].clientX;
   },{passive:true});
 
   wrap.addEventListener('touchend',()=>{
@@ -2734,15 +2738,23 @@ function calNav(delta){
   haptic();
 }
 
-/* イベントがある日付の Set を返す純粋関数 */
+/* 日付ごとのタスク情報を返す純粋関数 */
 function _calEventMap(){
-  // { 'YYYY-MM-DD': 'overdue' | 'future' }
+  // { 'YYYY-MM-DD': { count: number, overdue: bool, colors: string[] } }
   const map = {};
   const today = td();
   U.filter(u => !u.done).forEach(u => {
     const d = u.nextDate;
     if(!d) return;
-    map[d] = d < today ? 'overdue' : 'future';
+    if(!map[d]) map[d] = { count: 0, overdue: d < today, colors: [] };
+    map[d].count++;
+    // タグの色を収集（タグなし → グレー）
+    const tagColors = (u.tags || []).map(tid => { const t = getTag(tid); return t ? t.color : null; }).filter(Boolean);
+    if(tagColors.length) {
+      tagColors.forEach(c => { if(!map[d].colors.includes(c)) map[d].colors.push(c); });
+    } else if(!map[d].colors.includes('#9CA3AF')) {
+      map[d].colors.push('#9CA3AF');
+    }
   });
   return map;
 }
@@ -2810,9 +2822,10 @@ function _buildCalGridHtml(year, month){
     }
 
     const isToday   = dateStr === today;
-    const evType    = dateStr ? evMap[dateStr] : null;
-    const hasEvent  = !!evType;
-    const isOverdue = evType === 'overdue';
+    const ev        = dateStr ? evMap[dateStr] : null;
+    const count     = ev ? ev.count : 0;
+    const hasEvent  = count > 0;
+    const isOverdue = ev ? ev.overdue : false;
     const dow       = i % 7; // 0=日,6=土
 
     let cls = 'cal-cell';
@@ -2827,9 +2840,26 @@ function _buildCalGridHtml(year, month){
       ? `onclick="calJumpToDate('${dateStr}')"`
       : '';
 
+    // タグ色の四角ピップ（最大4個表示、超過は +N）
+    let pipsHtml = '';
+    if(hasEvent && !isOther){
+      const MAX_PIPS = 4;
+      // 期限超過なら全部赤に上書き
+      const colors = isOverdue
+        ? ev.colors.map(() => '#EF4444')
+        : ev.colors;
+      const shown = colors.slice(0, MAX_PIPS);
+      const rest  = count - shown.length; // 表示しきれないタスク数
+      const pips  = shown.map(c =>
+        `<div class="cal-pip" style="background:${c}"></div>`
+      ).join('');
+      const more  = rest > 0 ? `<span class="cal-pip-more">+${rest}</span>` : '';
+      pipsHtml = `<div class="cal-pips">${pips}${more}</div>`;
+    }
+
     html += `<div class="${cls}" ${onclick}>
       <div class="cal-num">${cellDate}</div>
-      <div class="cal-dot"></div>
+      ${pipsHtml}
     </div>`;
   }
   return html;
@@ -2847,8 +2877,8 @@ function calJumpToDate(dateStr){
   if(sub)  sub.textContent = 'タップして展開';
   haptic();
 
-  // 2. 対象カードを探してスクロール（少し待ってDOMが確定してから）
-  requestAnimationFrame(() => {
+  // 2. 対象カードを探してスクロール（cal-wrap のmax-heightトランジション完了後に実行）
+  setTimeout(() => {
     const panel = document.getElementById('p-upcoming');
     if(!panel) return;
     // カードは data-id 属性を持つ。unit の nextDate が dateStr のものを探す
@@ -2861,7 +2891,7 @@ function calJumpToDate(dateStr){
     const inner = card.querySelector('.card') || card;
     inner.classList.add('flash');
     setTimeout(() => inner.classList.remove('flash'), 500);
-  });
+  }, 350);
 }
 
 /* ── Upcoming schedule helpers ── */
@@ -2947,7 +2977,7 @@ function cHtmlUpcoming(u){
   const sched = futureSchedule(u);
   const schedRowsHtml = sched.map(({stepIdx, date, daysFromNow}, i)=>{
     const isNext = i === 0;
-    const relLbl = daysFromNow === 0 ? '今日' : daysFromNow === 1 ? '明日' : `${daysFromNow}日後`;
+    const relLbl = daysFromNow < 0 ? `${Math.abs(daysFromNow)}日超過` : daysFromNow === 0 ? '今日' : daysFromNow === 1 ? '明日' : `${daysFromNow}日後`;
     return `<div class="sched-row${isNext?' sched-next':''}">
       <div class="sched-row-num">${stepIdx+1}</div>
       <div class="sched-row-date">${fmtShortText(date)}</div>
@@ -3029,6 +3059,8 @@ function bindSearch(el){
 let currentTabIdx=0;
 function switchTab(btn){
   const id=btn.dataset.tab, newIdx=parseInt(btn.dataset.idx);
+  // Capture the tab we're leaving before updating state
+  const prevTab = document.querySelector('.tab-btn.on')?.dataset?.tab || null;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('on',b===btn));
 
   // B6 fix: clean state-based panel visibility, no static opacity/transform on .panel
@@ -3066,11 +3098,11 @@ function switchTab(btn){
   // Hide FAB on settings tab
   setFabHidden(id === 'settings');
 
-  // Clear tag filter and search only for the relevant tab being left
+  // Clear tag filter and search only when leaving the relevant tab
   let needRender = false;
-  if(id !== 'today'    && activeTagFilter   !== null){ activeTagFilter   = null; needRender = true; }
-  if(id !== 'upcoming' && activeTagFilterUp !== null){ activeTagFilterUp = null; needRender = true; }
-  if(id !== 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
+  if(prevTab === 'today'    && activeTagFilter   !== null){ activeTagFilter   = null; needRender = true; }
+  if(prevTab === 'upcoming' && activeTagFilterUp !== null){ activeTagFilterUp = null; needRender = true; }
+  if(prevTab === 'upcoming' && searchQ){ searchQ = ''; needRender = true; }
   if(id === 'settings'){
     renderSettings();
     // No render() needed for settings tab - renderSettings() handles its own panel
