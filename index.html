@@ -3503,24 +3503,36 @@ async function fireNotification(){
     ? `今日の復習が ${todayCount} 件あります。忘れずにチェックしよう！`
     : '今日の復習は完了済みです。お疲れさまでした！';
 
+  const NOTIF_OPTS = {
+    body,
+    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3Cpath d='M28 22h32a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M34 42h32M34 54h22' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",
+    badge: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3C/svg%3E",
+    tag: 'fukushu-daily',
+    renotify: true,
+    requireInteraction: false,
+    vibrate: [100, 50, 100],
+  };
+
+  // Try Service Worker (with timeout to avoid hanging on blob:-registered SW)
   if('serviceWorker' in navigator){
     try {
-      const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification('復習マネージャー 📚', {
-        body,
-        icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3Cpath d='M28 22h32a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6z' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M34 42h32M34 54h22' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",
-        badge: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563EB'/%3E%3C/svg%3E",
-        tag: 'fukushu-daily',
-        renotify: true,
-        requireInteraction: false,
-        vibrate: [100, 50, 100],
-      });
-      return;
-    } catch(_){}
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('SW timeout')), 2000))
+      ]);
+      await reg.showNotification('復習マネージャー 📚', NOTIF_OPTS);
+      return; // success
+    } catch(e){
+      console.warn('[fukushu] SW notification failed, falling back to direct API:', e.message);
+      // fall through to direct Notification API
+    }
   }
+
   // Fallback: direct Notification API
   if('Notification' in window && Notification.permission === 'granted'){
-    new Notification('復習マネージャー 📚', { body, tag: 'fukushu-daily' });
+    new Notification('復習マネージャー 📚', { body: NOTIF_OPTS.body, tag: NOTIF_OPTS.tag });
+  } else {
+    throw new Error('Notification permission not granted');
   }
 }
 
@@ -3575,8 +3587,13 @@ async function sendTestNotification(){
     const r = await requestNotifPermission();
     if(r !== 'granted'){ toast(IC.alert, '通知が許可されていません'); return; }
   }
-  await fireNotification();
-  toast(IC.checkCircle, 'テスト通知を送信しました');
+  try {
+    await fireNotification();
+    toast(IC.checkCircle, 'テスト通知を送信しました');
+  } catch(e) {
+    console.warn('[fukushu] sendTestNotification failed:', e.message);
+    toast(IC.alert, '通知の送信に失敗しました。設定を確認してください');
+  }
   haptic('medium');
 }
 
