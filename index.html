@@ -1185,14 +1185,21 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .notif-status-badge.denied{background:#FEE2E2;color:#991B1B}
 .notif-status-badge.default{background:var(--fill);color:var(--lbl2)}
 .notif-test-btn{
-  background:var(--blue-bg);border:1.5px solid var(--blue-bd);
-  color:var(--blue-d);border-radius:10px;padding:9px 16px;
+  background:var(--blue);border:none;
+  color:#fff;border-radius:10px;padding:9px 16px;
   font-size:13px;font-weight:700;font-family:inherit;
   cursor:pointer;white-space:nowrap;flex-shrink:0;
-  transition:opacity .12s;min-height:40px
+  transition:opacity .12s,transform .1s,box-shadow .1s;
+  min-height:40px;
+  box-shadow:0 2px 8px rgba(37,99,235,.35),0 1px 2px rgba(37,99,235,.2);
+  -webkit-tap-highlight-color:transparent
 }
-.notif-test-btn:active{opacity:.7}
-.notif-test-btn:disabled{opacity:.4;pointer-events:none}
+.notif-test-btn:active{
+  opacity:.85;
+  transform:scale(.94);
+  box-shadow:0 1px 3px rgba(37,99,235,.2)
+}
+.notif-test-btn:disabled{opacity:.4;pointer-events:none;box-shadow:none}
 .settings-hero{
   background:linear-gradient(135deg,#1a3faa 0%,#2563EB 50%,#3B82F6 100%);
   border-radius:var(--r);padding:18px 20px;margin-bottom:12px;
@@ -1393,7 +1400,7 @@ const IC = {
 ══════════════════════════════════════════ */
 // 復習スケジュール：1日後→7日後→14日後→28日後→60日後→90日後→120日後→180日後（約半年）
 const STEPS = ['1回目','2回目','3回目','4回目','5回目','6回目','7回目','8回目'];
-const INTS  = [1,7,14,28,60,90,120,180];
+const INTS  = [1,3,7,13,25,40,40,40];
 const MAX_STEP = STEPS.length; // 8
 const KEY   = 'fukushu-v6';
 const DOW   = '日月火水木金土';
@@ -3587,14 +3594,30 @@ async function sendTestNotification(){
     const r = await requestNotifPermission();
     if(r !== 'granted'){ toast(IC.alert, '通知が許可されていません'); return; }
   }
+  // Immediate visual feedback
+  const btn = document.querySelector('.notif-test-btn');
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = '送信中…';
+  }
+  haptic('medium');
   try {
     await fireNotification();
+    if(btn){ btn.textContent = '✓ 送信しました'; btn.style.background = '#10B981'; }
     toast(IC.checkCircle, 'テスト通知を送信しました');
   } catch(e) {
     console.warn('[fukushu] sendTestNotification failed:', e.message);
+    if(btn){ btn.textContent = '✗ 失敗'; btn.style.background = 'var(--red)'; }
     toast(IC.alert, '通知の送信に失敗しました。設定を確認してください');
   }
-  haptic('medium');
+  // Reset button after 2s
+  setTimeout(() => {
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = 'テスト送信';
+      btn.style.background = '';
+    }
+  }, 2000);
 }
 
 /* ══ Settings panel renderer ════════════ */
