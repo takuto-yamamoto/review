@@ -3029,8 +3029,16 @@ function denseShiftUnit(uid, destDate){
       row.style.opacity = '0';
     }));
     setTimeout(() => {
-      _renderDenseSheet();
-      _renderCalGrid(); // カレンダーのピップ・過密バッジも更新
+      // 残件数が0になったらシートを閉じる
+      const remaining = U.filter(u => !u.done && u.nextDate === _denseDate).length;
+      if(remaining === 0){
+        closeDenseSheet();
+        _renderCalGrid();
+        render();
+      } else {
+        _renderDenseSheet();
+        _renderCalGrid(); // カレンダーのピップ・過密バッジも更新
+      }
     }, 220);
   }
 }
@@ -3051,16 +3059,19 @@ function calJumpToDate(dateStr){
   setTimeout(() => {
     const panel = document.getElementById('p-upcoming');
     if(!panel) return;
-    // カードは data-id 属性を持つ。unit の nextDate が dateStr のものを探す
-    const target = U.find(u => !u.done && u.nextDate === dateStr);
-    if(!target) return;
-    const card = panel.querySelector(`[data-id="${target.id}"]`);
-    if(!card) return;
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // フラッシュして視認性UP
-    const inner = card.querySelector('.card') || card;
-    inner.classList.add('flash');
-    setTimeout(() => inner.classList.remove('flash'), 500);
+    // 同日に複数ユニットある場合も全件ハイライトし、先頭へスクロール
+    const targets = U.filter(u => !u.done && u.nextDate === dateStr);
+    if(!targets.length) return;
+    let firstCard = null;
+    targets.forEach(target => {
+      const card = panel.querySelector(`[data-id="${target.id}"]`);
+      if(!card) return;
+      if(!firstCard) firstCard = card;
+      const inner = card.querySelector('.card') || card;
+      inner.classList.add('flash');
+      setTimeout(() => inner.classList.remove('flash'), 500);
+    });
+    if(firstCard) firstCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, 350);
 }
 
@@ -3279,7 +3290,7 @@ function switchTab(btn){
   if(id === 'settings'){
     renderSettings();
     // No render() needed for settings tab - renderSettings() handles its own panel
-  } else if(needRender || !document.getElementById('p-'+id)?.innerHTML.trim()){
+  } else {
     render();
   }
 }
