@@ -1886,18 +1886,26 @@ function shrinkOut(wid,cb){
 }
 
 /* ══ Smart load balancer ═══════════════ */
+// 復習回数がこの値以上のカードのみ分散対象にする（序盤の間隔は守る）
+const SMART_SPREAD_MIN_STEP = 3;
+
 function analyzeLoad(){
   const OVER=5, SHIFT=3, CAP=8;
   const t=td();
   const map={};
   // Only consider future tasks (today's overdue tasks cannot be moved further back)
-  U.filter(u=>!u.done && u.nextDate>t).forEach(u=>{ map[u.nextDate]=map[u.nextDate]||[]; map[u.nextDate].push(u.id); });
-  const cnt={};
-  Object.keys(map).forEach(d=>cnt[d]=map[d].length);
+  // 復習3回以上済みのカードのみ分散対象（序盤カードの間隔はいじらない）
+  U.filter(u=>!u.done && u.nextDate>t && u.step>=SMART_SPREAD_MIN_STEP)
+    .forEach(u=>{ map[u.nextDate]=map[u.nextDate]||[]; map[u.nextDate].push(u.id); });
+  // 過密判定は全カード（分散対象外も含む）でカウントする
+  const allMap={};
+  U.filter(u=>!u.done && u.nextDate>t)
+    .forEach(u=>{ allMap[u.nextDate]=(allMap[u.nextDate]||0)+1; });
+  const cnt={...allMap};
   const workMap={};
   Object.keys(map).forEach(d=>workMap[d]=[...map[d]]);
   const proposed=[];
-  for(const fromDate of Object.keys(cnt).sort()){
+  for(const fromDate of Object.keys(map).sort()){
     if((cnt[fromDate]||0)<OVER) continue;
     const cands=[];
     for(let delta=1;delta<=SHIFT;delta++){
@@ -1975,7 +1983,7 @@ function adjBannerHtml(moves){
       '<div class="adj-icon">'+IC.wand+'</div>'+
       '<div class="adj-titles">'+
         '<div class="adj-title">スマート分散の提案</div>'+
-        '<div class="adj-sub">'+sub+' · '+moves.length+'件を調整可能</div>'+
+        '<div class="adj-sub">'+sub+' · 復習3回以上の'+moves.length+'件を調整可能</div>'+
       '</div>'+
       '<div class="adj-chevron">'+IC.chevDown+'</div>'+
     '</div>'+
