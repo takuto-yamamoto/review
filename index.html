@@ -3828,8 +3828,11 @@ function renderSettings(){
             onchange="updateNotifTime(this.value)" oninput="updateNotifTime(this.value)"
             style="width:120px">
         </div>
-        <button class="notif-test-btn" onclick="sendTestNotification()"
-          ${perm !== 'granted' ? 'disabled' : ''}>テスト送信</button>
+        <div style="display:flex;flex-direction:column;justify-content:flex-end;flex-shrink:0">
+          <div style="font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:6px;visibility:hidden">dummy</div>
+          <button class="notif-test-btn" onclick="sendTestNotification()"
+            ${perm !== 'granted' ? 'disabled' : ''}>テスト送信</button>
+        </div>
       </div>` : ''}
     </div>
 
