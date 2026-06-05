@@ -890,6 +890,62 @@ button,a,input,[role="button"]{touch-action:manipulation}
   line-height:1;letter-spacing:-.5px;
 }
 
+/* ══ Dense-day sheet（過密日の手動分散シート） ══ */
+.cal-dense-badge{
+  position:absolute;top:2px;right:2px;
+  width:8px;height:8px;border-radius:50%;
+  background:#F59E0B;pointer-events:none;
+  display:none;
+}
+.cal-cell.dense .cal-num{
+  outline:2px solid #F59E0B;outline-offset:1px;
+}
+.cal-cell.dense .cal-dense-badge{display:block}
+.dense-sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:120;
+  background:var(--card);border-radius:24px 24px 0 0;
+  transform:translateY(110%);
+  transition:transform .38s cubic-bezier(.32,.72,0,1);
+  padding-bottom:var(--safe-bottom);
+  padding-left:var(--safe-left);
+  padding-right:var(--safe-right);
+  display:flex;flex-direction:column;
+  max-height:85dvh;
+}
+.dense-sheet.on{transform:translateY(0)}
+.dense-sheet-pull{width:40px;height:5px;background:var(--lbl3);border-radius:3px;margin:12px auto 0;flex-shrink:0}
+.dense-sheet-head{padding:12px 20px 10px;flex-shrink:0}
+.dense-sheet-ttl{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:3px}
+.dense-sheet-sub{font-size:13px;color:var(--lbl2);line-height:1.5}
+.dense-sheet-note{font-size:12px;color:var(--lbl3);margin-top:6px;line-height:1.5;
+  background:var(--fill);border-radius:8px;padding:8px 10px}
+.dense-sheet-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  flex:1;min-height:0;padding:8px 16px 16px}
+.dense-row{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 0;border-bottom:.5px solid var(--sep);
+}
+.dense-row:last-child{border-bottom:none}
+.dense-row-name{flex:1;font-size:14px;font-weight:600;color:var(--lbl);
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dense-row-step{font-size:11px;color:var(--lbl3);font-weight:500;flex-shrink:0}
+.dense-row-btns{display:flex;gap:4px;flex-shrink:0}
+.dense-shift-btn{
+  border:1.5px solid var(--sep);background:var(--card);
+  border-radius:8px;padding:5px 9px;
+  font-size:12px;font-weight:600;color:var(--blue);
+  cursor:pointer;font-family:inherit;white-space:nowrap;
+  transition:background .12s,border-color .12s;min-height:34px;
+}
+.dense-shift-btn:active{background:var(--blue-bg);border-color:var(--blue)}
+.dense-empty{text-align:center;padding:32px 16px;color:var(--lbl2);font-size:14px;line-height:1.7}
+.dense-close-btn{
+  margin:0 16px 8px;padding:13px;border:none;border-radius:12px;
+  background:var(--fill);color:var(--lbl2);font-size:15px;font-weight:600;
+  font-family:inherit;cursor:pointer;flex-shrink:0;
+}
+.dense-close-btn:active{opacity:.7}
+
 /* Tag filter bar */
 .tag-filter-bar{
   display:flex;gap:6px;overflow-x:auto;padding:0 0 8px;
@@ -1888,6 +1944,8 @@ function shrinkOut(wid,cb){
 /* ══ Smart load balancer ═══════════════ */
 // 復習回数がこの値以上のカードのみ分散対象にする（序盤の間隔は守る）
 const SMART_SPREAD_MIN_STEP = 3;
+// カレンダー上で「過密」とみなす1日あたりの件数（スマート分散のOVERと同じ値）
+const CAL_DENSE_OVER = 5;
 
 function analyzeLoad(){
   const OVER=5, SHIFT=3, CAP=8;
@@ -2843,16 +2901,22 @@ function _buildCalGridHtml(year, month){
     const isOverdue = ev ? ev.overdue : false;
     const dow       = i % 7; // 0=日,6=土
 
+    const isDense  = count >= CAL_DENSE_OVER && !isOther && !isOverdue;
+
     let cls = 'cal-cell';
     if(isOther)   cls += ' other-month';
     if(isToday)   cls += ' today';
     if(hasEvent)  cls += ' has-event';
     if(isOverdue) cls += ' overdue';
+    if(isDense)   cls += ' dense';
     if(dow === 0 && !isToday) cls += ' sun';
     if(dow === 6 && !isToday) cls += ' sat';
 
+    // 過密日 → 分散シート、通常 → スクロール
     const onclick = (dateStr && hasEvent)
-      ? `onclick="calJumpToDate('${dateStr}')"`
+      ? isDense
+        ? `onclick="openDenseSheet('${dateStr}')"`
+        : `onclick="calJumpToDate('${dateStr}')"`
       : '';
 
     // タグ色の四角ピップ（最大4個表示、超過は +N）
@@ -2874,10 +2938,97 @@ function _buildCalGridHtml(year, month){
 
     html += `<div class="${cls}" ${onclick}>
       <div class="cal-num">${cellDate}</div>
+      <div class="cal-dense-badge"></div>
       ${pipsHtml}
     </div>`;
   }
   return html;
+}
+
+/* ══ Dense-day manual spread sheet ════════════════ */
+let _denseDate = null; // 現在シートで表示中の日付
+
+function openDenseSheet(dateStr){
+  _denseDate = dateStr;
+  _renderDenseSheet();
+  document.getElementById('dense-overlay').classList.add('on');
+  document.getElementById('dense-sheet').classList.add('on');
+  haptic();
+}
+
+function closeDenseSheet(){
+  document.getElementById('dense-overlay').classList.remove('on');
+  document.getElementById('dense-sheet').classList.remove('on');
+  _denseDate = null;
+}
+
+function _renderDenseSheet(){
+  const dateStr = _denseDate;
+  if(!dateStr) return;
+  const today = td();
+  const allCount = U.filter(u => !u.done && u.nextDate === dateStr).length;
+  const cands = U.filter(u => !u.done && u.nextDate === dateStr);
+
+  // ヘッダー
+  document.getElementById('dense-sheet-ttl').textContent =
+    fmtShortText(dateStr) + ' の復習一覧（' + allCount + '件）';
+  document.getElementById('dense-sheet-sub').textContent = '';
+
+  const scroll = document.getElementById('dense-sheet-scroll');
+
+  if(cands.length === 0){
+    scroll.innerHTML = '<div class="dense-empty">ずらせるカードがありません。</div>';
+    return;
+  }
+
+  // 移動先の候補日ボタンを生成（-3〜+3日、過去・当日は除外）
+  function shiftBtns(uid){
+    const deltas = [-3,-2,-1,1,2,3];
+    return deltas.map(d => {
+      const dest = addD(dateStr, d);
+      if(dest <= today) return ''; // 過去はスキップ
+      if(dest === dateStr) return '';
+      const destCount = U.filter(u => !u.done && u.nextDate === dest).length;
+      const warn = destCount >= CAL_DENSE_OVER ? '⚠️' : '';
+      const label = (d > 0 ? '+' : '') + d + '日' + warn;
+      return `<button class="dense-shift-btn" onclick="denseShiftUnit('${uid}','${dest}')">${label}</button>`;
+    }).join('');
+  }
+
+  scroll.innerHTML = cands.map(u => {
+    const stepLabel = STEPS[u.step] || (u.step + '回目');
+    return `<div class="dense-row" id="dense-row-${u.id}">
+      <div class="dense-row-name">${esc(u.name)}</div>
+      <div class="dense-row-step">${stepLabel}</div>
+      <div class="dense-row-btns">${shiftBtns(u.id)}</div>
+    </div>`;
+  }).join('');
+}
+
+function denseShiftUnit(uid, destDate){
+  const u = U.find(x => x.id === uid);
+  if(!u) return;
+  const fromDate = u.nextDate;
+  u.nextDate = destDate;
+  save();
+  haptic('medium');
+  toast(IC.check, esc(u.name) + ' を ' + fmtShortText(destDate) + ' へ移動しました');
+  // 行を削除してシートを再描画（_denseDateはそのまま残す）
+  const row = document.getElementById('dense-row-' + uid);
+  if(row){
+    row.style.transition = 'max-height .2s ease, opacity .15s';
+    row.style.overflow = 'hidden';
+    const h = row.offsetHeight;
+    row.style.maxHeight = h + 'px';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      row.style.maxHeight = '0';
+      row.style.opacity = '0';
+    }));
+    setTimeout(() => {
+      _renderDenseSheet();
+      _renderCalGrid(); // カレンダーのピップ・過密バッジも更新
+    }, 220);
+  }
 }
 
 /* 日付セルタップ → 該当カードへスクロール */
@@ -3806,6 +3957,19 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   try{navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});}catch(_){}
 }
 </script>
+
+<!-- Dense-day manual spread sheet -->
+<div class="overlay" id="dense-overlay" onclick="closeDenseSheet()" style="z-index:119"></div>
+<div class="dense-sheet" id="dense-sheet">
+  <div class="dense-sheet-pull"></div>
+  <div class="dense-sheet-head">
+    <div class="dense-sheet-ttl" id="dense-sheet-ttl"></div>
+    <div class="dense-sheet-sub" id="dense-sheet-sub"></div>
+    <div class="dense-sheet-note">⚠️ のついた移動先はその日も過密になります</div>
+  </div>
+  <div class="dense-sheet-scroll" id="dense-sheet-scroll"></div>
+  <button class="dense-close-btn" onclick="closeDenseSheet()">閉じる</button>
+</div>
 
 <!-- Tag manager sheet -->
 <div class="overlay" id="tag-overlay" onclick="closeTagMgr()" style="z-index:109"></div>
