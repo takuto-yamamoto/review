@@ -2906,19 +2906,22 @@ function calJumpToDate(dateStr){
 let _schedOpen = {};
 
 function futureSchedule(u){
-  // Returns array of {stepIdx, date, daysFromNow} for remaining steps
+  // Returns array of {stepIdx, date, daysFromNow} for remaining steps.
+  // The immediately upcoming step uses u.nextDate as-is (may have been shifted
+  // by smart-spread). Beyond that, we simulate completing each step on the day
+  // it's scheduled and adding INTS[next] from that day — BUT we use today as
+  // the completion date for the shifted step so that only the shifted step's
+  // date changes, not every subsequent step.
   const result = [];
   const today = td();
-  // The next scheduled date is u.nextDate (step u.step)
-  // After that, each step adds INTS[step] days from the *completion* date.
-  // We approximate: step N is done on its nextDate, step N+1 = nextDate + INTS[N+1]
-  let baseDate = u.nextDate;
-  for(let s = u.step; s < MAX_STEP; s++){
-    const d = diff(baseDate);
-    result.push({ stepIdx: s, date: baseDate, daysFromNow: d });
-    if(s + 1 < MAX_STEP){
-      baseDate = addD(baseDate, INTS[s + 1]);
-    }
+  // First entry: the shifted (or normal) nextDate
+  result.push({ stepIdx: u.step, date: u.nextDate, daysFromNow: diff(u.nextDate) });
+  // For subsequent steps, base each one off today (as complete() does), not
+  // off nextDate, so a 1-day spread shift doesn't cascade into all future steps.
+  let baseDate = today;
+  for(let s = u.step + 1; s < MAX_STEP; s++){
+    baseDate = addD(baseDate, INTS[s]);
+    result.push({ stepIdx: s, date: baseDate, daysFromNow: diff(baseDate) });
   }
   return result;
 }
