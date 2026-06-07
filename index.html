@@ -1435,7 +1435,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
    B5 fix: define proper large/small variants, no string.replace() hacks
 ══════════════════════════════════════════ */
 /* ══ App version ════════════════════════ */
-const APP_VERSION = 'v1.30.0';
+const APP_VERSION = 'v1.31.0';
 const APP_BUILD   = '2026-06-07';
 
 const IC = {
@@ -2960,11 +2960,9 @@ function _buildCalGridHtml(year, month){
     if(dow === 0 && !isToday) cls += ' sun';
     if(dow === 6 && !isToday) cls += ' sat';
 
-    // 過密日 → 分散シート、通常 → スクロール
+    // 件数に関わらず、復習がある日はすべてシートを開く
     const onclick = (dateStr && hasEvent)
-      ? isDense
-        ? `onclick="openDenseSheet('${dateStr}')"`
-        : `onclick="calJumpToDate('${dateStr}')"`
+      ? `onclick="openDenseSheet('${dateStr}')"`
       : '';
 
     // タグ色の四角ピップ（最大4個表示、超過は +N）
@@ -3019,8 +3017,8 @@ function _renderDenseSheet(){
 
   // ヘッダー
   document.getElementById('dense-sheet-ttl').textContent =
-    fmtShortText(dateStr) + ' の復習一覧（' + allCount + '件）';
-  document.getElementById('dense-sheet-sub').textContent = '';
+    fmtShortText(dateStr) + ' の復習（' + allCount + '件）';
+  document.getElementById('dense-sheet-sub').textContent = '日付を変更したいカードをずらせます';
 
   const scroll = document.getElementById('dense-sheet-scroll');
 
@@ -4020,7 +4018,7 @@ try {
 } catch(_){}
 
 if('serviceWorker' in navigator){
-  const sw=`const C='fk-v22';
+  const sw=`const C='fk-v23';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));return self.clients.claim();});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.open(C).then(c=>c.match(e.request).then(r=>{const n=fetch(e.request).then(rs=>{c.put(e.request,rs.clone());return rs;}).catch(()=>r);return r||n;})));});`;
@@ -4035,7 +4033,7 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
   <div class="dense-sheet-head">
     <div class="dense-sheet-ttl" id="dense-sheet-ttl"></div>
     <div class="dense-sheet-sub" id="dense-sheet-sub"></div>
-    <div class="dense-sheet-note">⚠️ のついた移動先はその日も過密になります</div>
+    <div class="dense-sheet-note">⚠️ のついた移動先はその日が過密になります</div>
   </div>
   <div class="dense-sheet-scroll" id="dense-sheet-scroll"></div>
   <button class="dense-close-btn" onclick="closeDenseSheet()">閉じる</button>
