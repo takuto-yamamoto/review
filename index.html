@@ -322,6 +322,15 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transition:color .12s
 }
 .done-del:active{color:var(--red)}
+.done-undo{
+  background:none;border:1px solid rgba(37,99,235,.25);border-radius:8px;
+  cursor:pointer;min-width:44px;min-height:36px;
+  color:var(--blue);font-size:12px;font-weight:600;font-family:inherit;
+  padding:5px 10px;white-space:nowrap;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  transition:background .12s,color .12s;flex-shrink:0
+}
+.done-undo:active{background:var(--blue-bg)}
 
 /* ══ Weekday badge ═════════════════════ */
 .dow{
@@ -1409,7 +1418,7 @@ button,a,input,[role="button"]{touch-action:manipulation}
 <!-- P2: Undo bar -->
 <div class="undo-bar" id="undo-bar">
   <span class="undo-bar-msg" id="undo-msg"></span>
-  <button class="undo-btn" onclick="undoDelete()">元に戻す</button>
+  <button class="undo-btn" onclick="_undoComplete ? undoComplete() : undoDelete()">元に戻す</button>
   <div class="undo-bar-prog" id="undo-prog"></div>
 </div>
 
@@ -1835,12 +1844,76 @@ function addUnit(){
 
 const _completing = new Set();
 
+/* ══ Undo complete ══════════════════════ */
+let _undoComplete = null; // { id, prevStep, prevNextDate, prevLastDoneDate, wasDone, prevCompletedAt, streakBumped }
+let _undoCompleteTimer = null;
+let _undoCompleteProgTimer = null;
+const UNDO_COMPLETE_SEC = 6;
+
+function showUndoComplete(msg){
+  _undoStack = null; clearTimeout(_undoTimer); clearTimeout(_undoProgTimer);
+  clearTimeout(_undoCompleteTimer); clearTimeout(_undoCompleteProgTimer);
+  document.getElementById('undo-msg').textContent = msg;
+  const bar  = document.getElementById('undo-bar');
+  const prog = document.getElementById('undo-prog');
+  prog.style.transition = 'none'; prog.style.width = '100%';
+  bar.classList.add('on');
+  _undoCompleteProgTimer = setTimeout(()=>{
+    prog.style.transition = `width ${UNDO_COMPLETE_SEC}s linear`;
+    prog.style.width = '0%';
+  }, 80);
+  _undoCompleteTimer = setTimeout(()=>{
+    bar.classList.remove('on');
+    _undoComplete = null;
+  }, UNDO_COMPLETE_SEC * 1000 + 80);
+}
+
+function undoComplete(){
+  if(!_undoComplete) return;
+  clearTimeout(_undoCompleteTimer); clearTimeout(_undoCompleteProgTimer);
+  const prog = document.getElementById('undo-prog');
+  if(prog){ prog.style.transition = 'none'; prog.style.width = '0%'; }
+  const { id, prevStep, prevNextDate, prevLastDoneDate, wasDone, prevCompletedAt } = _undoComplete;
+  _undoComplete = null;
+  const u = U.find(x => x.id === id);
+  if(!u){ document.getElementById('undo-bar').classList.remove('on'); return; }
+  // Restore previous state
+  u.step = prevStep;
+  u.nextDate = prevNextDate;
+  u.done = wasDone;
+  if(prevLastDoneDate !== undefined) u.lastDoneDate = prevLastDoneDate;
+  else delete u.lastDoneDate;
+  if(wasDone && prevCompletedAt !== undefined) u.completedAt = prevCompletedAt;
+  else delete u.completedAt;
+  // Revert streak bump (decrement by 1, min 0)
+  try {
+    const sk = JSON.parse(localStorage.getItem('fukushu-streak-v1') || '{}');
+    if(sk.count > 0){ sk.count--; localStorage.setItem('fukushu-streak-v1', JSON.stringify(sk)); }
+  } catch(_){}
+  save();
+  document.getElementById('undo-bar').classList.remove('on');
+  render();
+  toast(IC.checkCircle, '完了を取り消しました');
+  haptic('medium');
+}
+
 function complete(id){
   if(_completing.has(id)) return;
   _completing.add(id);
   // Safety: clear from set after 3s even if callbacks fail
   const _safetyTimer = setTimeout(()=>_completing.delete(id), 3000);
   const u=U.find(x=>x.id===id); if(!u||u.done){ _completing.delete(id); clearTimeout(_safetyTimer); return; }
+
+  // Save state for undo before mutating
+  const snapshot = {
+    id,
+    prevStep: u.step,
+    prevNextDate: u.nextDate,
+    prevLastDoneDate: u.lastDoneDate,
+    wasDone: false,
+    prevCompletedAt: undefined,
+  };
+
   const card=document.getElementById('c-'+id);
   if(card) card.classList.add('flash');
   haptic('medium');
@@ -1848,12 +1921,17 @@ function complete(id){
   if(u.step>=MAX_STEP){
     u.done=true;
     u.completedAt = Date.now();
+    snapshot.wasDone = false; // was not done before
     bumpStreak();
     save();
     clearTimeout(_safetyTimer);
     shrinkOut('w-'+id,()=>{ render(); _completing.delete(id); });
     // P5: celebration for final completion
     setTimeout(()=>celebrate(u.name), 320);
+    const completeName = u.name;
+    // Undo bar for final completion
+    _undoComplete = snapshot;
+    setTimeout(()=>showUndoComplete('「'+esc(completeName)+'」の完了を取り消す'), 340);
     toast(IC.checkCircle, esc(u.name)+'の全復習が完了！');
   } else {
     u.nextDate=addD(td(),INTS[u.step]);
@@ -1862,10 +1940,19 @@ function complete(id){
     save();
     const msg = esc(STEPS[u.step - 1] || `${u.step}回目`) + '完了！次回: ' + fmtShortText(u.nextDate);
     clearTimeout(_safetyTimer);
+    // Undo bar for step completion
+    _undoComplete = snapshot;
+    const stepName = u.name;
     if(u.nextDate>td()){
-      setTimeout(()=>shrinkOut('w-'+id,()=>{ render(); _completing.delete(id); }),280);
+      setTimeout(()=>{
+        shrinkOut('w-'+id,()=>{ render(); _completing.delete(id); });
+        showUndoComplete('「'+esc(stepName)+'」の完了を取り消す');
+      }, 280);
     } else {
-      setTimeout(()=>{ render(); _completing.delete(id); },320);
+      setTimeout(()=>{
+        render(); _completing.delete(id);
+        showUndoComplete('「'+esc(stepName)+'」の完了を取り消す');
+      }, 320);
     }
     toast(IC.check, msg);
   }
@@ -2111,6 +2198,7 @@ let _undoProgTimer = null;
 const UNDO_SEC = 5;
 
 function showUndo(unit, idx, msg){
+  _undoComplete = null; clearTimeout(_undoCompleteTimer); clearTimeout(_undoCompleteProgTimer);
   _undoStack={unit,idx};
   clearTimeout(_undoTimer); clearTimeout(_undoProgTimer);
   document.getElementById('undo-msg').textContent=msg;
@@ -2147,6 +2235,34 @@ function undoDelete(){
   document.getElementById('undo-bar').classList.remove('on');
   render();
   toast(IC.checkCircle,'削除を取り消しました');
+  haptic('medium');
+}
+
+/* ══ Undo complete from done list ══════ */
+function undoCompleteFromDone(id){
+  const u = U.find(x => x.id === id);
+  if(!u) return;
+
+  // 最終ステップ(done=true)の場合: 1ステップ戻して復習リストへ
+  // 途中ステップ(done=false, lastDoneDate===td())の場合: 1ステップ戻す
+  if(u.done){
+    // 全完了状態から戻す
+    u.done = false;
+    u.step = MAX_STEP - 1;
+    delete u.completedAt;
+    // nextDateを今日に設定（すぐ復習できるよう）
+    u.nextDate = td();
+  } else {
+    // 途中完了から戻す（step > 0 の場合のみ）
+    if(u.step <= 0){ toast(IC.alert, '戻せる状態がありません'); return; }
+    u.step--;
+    // nextDateを前のステップの値に戻す（近似：今日に設定）
+    u.nextDate = td();
+    delete u.lastDoneDate;
+  }
+  save();
+  render();
+  toast(IC.checkCircle, '「' + esc(u.name) + '」を復習リストに戻しました');
   haptic('medium');
 }
 
@@ -2366,7 +2482,10 @@ function rToday(list, hasActive, allDone){
           <div class="today-done-item-name">${esc(u.name)}</div>
           <div class="today-done-item-meta">${stepLabel}</div>
         </div>
-        <button class="today-done-item-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="done-undo" onclick="undoCompleteFromDone('${u.id}')" aria-label="復習に戻す" style="font-size:11px;padding:4px 8px;min-height:32px">↩ 戻す</button>
+          <button class="today-done-item-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+        </div>
       </div>`;
     }).join('');
     return `<div class="today-done-acc${open?' open':''}" id="today-done-acc">
@@ -2771,7 +2890,10 @@ function rDone(doneList){
           <div class="done-name">${esc(u.name)}</div>
           <div class="done-meta">${IC.calendar} ${fmtFull(u.addedDate)}　全${MAX_STEP}回完了</div>
         </div>
-        <button class="done-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="done-undo" onclick="undoCompleteFromDone('${u.id}')" aria-label="復習に戻す">↩ 戻す</button>
+          <button class="done-del" onclick="del('${u.id}')" aria-label="削除">${IC.trash}</button>
+        </div>
       </div>`).join('');
   }
 
