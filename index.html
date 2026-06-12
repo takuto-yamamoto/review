@@ -446,7 +446,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
   will-change:transform,bottom,max-height;
 }
 .sheet.on{transform:translateY(0);-webkit-transform:translateY(0)}
-.sheet-pull{width:40px;height:5px;background:var(--lbl3);border-radius:3px;margin:12px auto 4px;flex-shrink:0}
+.sheet-pull{
+  display:block;width:100%;height:33px;flex-shrink:0;
+  position:relative;cursor:grab;-webkit-tap-highlight-color:transparent;
+}
+.sheet-pull::after{
+  content:'';position:absolute;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  width:40px;height:5px;
+  background:var(--lbl3);border-radius:3px;
+}
 .sheet-body{
   padding:8px 20px 20px;
   overflow-y:auto;
@@ -576,6 +585,172 @@ button,a,input,[role="button"]{touch-action:manipulation}
 .sched-row-rel{font-size:12px;color:var(--lbl3)}
 .sched-row.sched-next .sched-row-rel{color:var(--blue);font-weight:600}
 
+/* ══ Onboarding overlay ════════════════ */
+.ob-overlay{
+  position:fixed;inset:0;z-index:9000;
+  display:flex;align-items:flex-end;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease;
+}
+.ob-overlay.on{opacity:1;pointer-events:all}
+
+/* SVG cutout dimmer — replaces separate spotlight */
+#ob-svg-mask{
+  position:fixed;inset:0;z-index:8999;
+  width:100%;height:100%;
+  pointer-events:none;
+  opacity:0;transition:opacity .3s ease;
+}
+#ob-svg-mask.on{opacity:1}
+
+/* Highlight ring drawn on top of cutout */
+.ob-spotlight{
+  position:fixed;z-index:9000;
+  border-radius:16px;
+  pointer-events:none;
+  transition:all .35s cubic-bezier(.25,.46,.45,.94);
+  border:2.5px solid rgba(255,255,255,.85);
+  box-shadow:0 0 0 3px rgba(255,255,255,.2);
+  display:none;
+}
+.ob-spotlight.on{display:block}
+
+/* Coach bubble */
+.ob-bubble{
+  position:fixed;z-index:9001;
+  background:#fff;
+  border-radius:18px;
+  padding:18px 20px 16px;
+  max-width:calc(100vw - 40px);
+  width:320px;
+  box-shadow:0 8px 32px rgba(0,0,0,.22);
+  pointer-events:none;
+  opacity:0;transform:translateY(8px);
+  transition:opacity .28s ease,transform .28s cubic-bezier(.25,.46,.45,.94);
+}
+.ob-bubble.on{opacity:1;transform:translateY(0);pointer-events:all}
+.ob-bubble::after{
+  content:'';position:absolute;
+  width:0;height:0;
+}
+.ob-bubble.arrow-down::after{
+  bottom:-9px;
+  left:var(--ob-arrow-left,50%);transform:translateX(-50%);
+  border-left:9px solid transparent;border-right:9px solid transparent;
+  border-top:9px solid #fff;
+}
+.ob-bubble.arrow-up::after{
+  top:-9px;
+  left:var(--ob-arrow-left,50%);transform:translateX(-50%);
+  border-left:9px solid transparent;border-right:9px solid transparent;
+  border-bottom:9px solid #fff;
+}
+.ob-bubble.arrow-up-left::after{
+  top:-9px;left:28px;
+  border-left:9px solid transparent;border-right:9px solid transparent;
+  border-bottom:9px solid #fff;
+}
+.ob-bubble.arrow-up-right::after{
+  top:-9px;right:28px;
+  border-left:9px solid transparent;border-right:9px solid transparent;
+  border-bottom:9px solid #fff;
+}
+.ob-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--blue);color:#fff;
+  font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;
+  border-radius:100px;padding:2px 9px;margin-bottom:8px;letter-spacing:.3px;
+}
+.ob-emoji{font-size:28px;margin-bottom:6px;display:block;line-height:1}
+.ob-ttl{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:5px;line-height:1.35}
+.ob-body{font-size:14px;color:var(--lbl2);line-height:1.7;margin-bottom:14px}
+.ob-body strong{color:var(--lbl);font-weight:700}
+.ob-actions{display:flex;gap:8px}
+.ob-next{
+  flex:1;background:var(--blue);color:#fff;border:none;border-radius:12px;
+  padding:13px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;
+  transition:opacity .12s;letter-spacing:.1px;
+}
+.ob-next:active{opacity:.8}
+.ob-skip{
+  background:none;border:none;cursor:pointer;
+  font-family:inherit;font-size:14px;font-weight:500;color:var(--lbl3);
+  padding:13px 10px;white-space:nowrap;
+}
+.ob-skip:active{opacity:.6}
+.ob-dots{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  margin-bottom:12px;
+}
+.ob-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--lbl3);opacity:.3;
+  transition:all .2s;
+}
+.ob-dot.active{background:var(--blue);opacity:1;transform:scale(1.25)}
+.ob-dot.done{background:var(--blue);opacity:.5}
+
+/* PWA install card (bottom sheet style) */
+.pwa-sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:9100;
+  background:var(--card);
+  border-radius:24px 24px 0 0;
+  padding:8px 20px calc(20px + var(--safe-bottom));
+  transform:translateY(110%);
+  transition:transform .4s cubic-bezier(.32,.72,0,1);
+  box-shadow:0 -4px 30px rgba(0,0,0,.15);
+}
+.pwa-sheet.on{transform:translateY(0)}
+.pwa-pull{
+  display:block;width:100%;height:28px;position:relative;cursor:grab;
+}
+.pwa-pull::after{
+  content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:36px;height:4px;background:var(--lbl3);border-radius:3px;
+}
+.pwa-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.pwa-icon{
+  width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,#1D4ED8,#3B82F6);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.pwa-head-txt{}
+.pwa-head-ttl{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:2px}
+.pwa-head-sub{font-size:13px;color:var(--lbl2)}
+.pwa-steps{
+  background:var(--blue-bg);border-radius:14px;
+  padding:14px 16px;margin-bottom:16px;
+  display:flex;flex-direction:column;gap:12px;
+}
+.pwa-step{display:flex;align-items:flex-start;gap:12px}
+.pwa-step-num{
+  width:26px;height:26px;border-radius:50%;
+  background:var(--blue);color:#fff;
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  margin-top:1px;
+}
+.pwa-step-txt{}
+.pwa-step-ttl{font-size:14px;font-weight:700;color:var(--lbl);margin-bottom:2px}
+.pwa-step-sub{font-size:13px;color:var(--lbl2);line-height:1.5}
+.pwa-step-sub em{font-style:normal;font-weight:700;color:var(--blue)}
+.pwa-android-note{
+  background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;
+  padding:12px 14px;margin-bottom:14px;font-size:13px;color:#065F46;line-height:1.6;
+}
+.pwa-dismiss{
+  width:100%;background:var(--fill);border:none;border-radius:14px;
+  padding:14px;font-size:16px;font-weight:600;color:var(--lbl2);
+  font-family:inherit;cursor:pointer;transition:opacity .12s;
+}
+.pwa-dismiss:active{opacity:.7}
+.pwa-overlay{
+  position:fixed;inset:0;z-index:9099;
+  background:rgba(0,0,0,.35);pointer-events:none;opacity:0;
+  transition:opacity .3s;
+}
+.pwa-overlay.on{opacity:1;pointer-events:all}
+
 /* ══ Step dots ══════════════════════════ */
 .step-dots{display:flex;align-items:center;gap:6px;margin-bottom:13px;flex-wrap:wrap}
 .step-dot{
@@ -620,7 +795,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1)
 }
 .snooze-pick.on .snooze-pick-box{transform:translateY(0)}
-.snooze-pick-pull{width:36px;height:4px;background:var(--lbl3);border-radius:3px;margin:10px auto 14px}
+.snooze-pick-pull{
+  display:block;width:100%;height:33px;
+  position:relative;cursor:grab;-webkit-tap-highlight-color:transparent;
+}
+.snooze-pick-pull::after{
+  content:'';position:absolute;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  width:36px;height:4px;
+  background:var(--lbl3);border-radius:3px;
+}
 .snooze-pick-ttl{font-size:13px;color:var(--lbl2);font-weight:600;text-align:center;margin-bottom:10px}
 .snooze-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
 .snooze-opt{
@@ -696,7 +880,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
   transform:translateY(110%);transition:transform .32s cubic-bezier(.32,.72,0,1);
 }
 .edit-modal.on .edit-modal-box{transform:translateY(0)}
-.edit-modal-pull{width:36px;height:4px;background:var(--lbl3);border-radius:3px;margin:0 auto 16px}
+.edit-modal-pull{
+  display:block;width:100%;height:33px;
+  position:relative;cursor:grab;-webkit-tap-highlight-color:transparent;
+}
+.edit-modal-pull::after{
+  content:'';position:absolute;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  width:36px;height:4px;
+  background:var(--lbl3);border-radius:3px;
+}
 .edit-modal-ttl{font-size:15px;font-weight:700;color:var(--lbl2);text-align:center;margin-bottom:14px}
 .edit-modal-inp{
   width:100%;background:var(--fill);border:none;border-radius:12px;
@@ -922,7 +1115,16 @@ button,a,input,[role="button"]{touch-action:manipulation}
   max-height:85dvh;
 }
 .dense-sheet.on{transform:translateY(0)}
-.dense-sheet-pull{width:40px;height:5px;background:var(--lbl3);border-radius:3px;margin:12px auto 0;flex-shrink:0}
+.dense-sheet-pull{
+  display:block;width:100%;height:33px;flex-shrink:0;
+  position:relative;cursor:grab;-webkit-tap-highlight-color:transparent;
+}
+.dense-sheet-pull::after{
+  content:'';position:absolute;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  width:40px;height:5px;
+  background:var(--lbl3);border-radius:3px;
+}
 .dense-sheet-head{padding:12px 20px 10px;flex-shrink:0}
 .dense-sheet-ttl{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:3px}
 .dense-sheet-sub{font-size:13px;color:var(--lbl2);line-height:1.5}
@@ -1939,7 +2141,7 @@ function del(id){
   haptic();
   shrinkOut('w-'+id,()=>{
     U=U.filter(x=>x.id!==id); save(); render();
-    showUndo(unit, idx, `「${unit.name}」を削除しました`);
+    showUndo(unit, idx, `「${esc(unit.name)}」を削除しました`);
   });
 }
 
@@ -2293,7 +2495,7 @@ function initSwipeDeleteOnly(wrap){
 
   wrap.addEventListener('touchstart',e=>{
     if(openWrap&&openWrap!==wrap){ openWrap._closeSwipe?.(); openWrap=null; }
-    sx=e.touches[0].clientX; sy=e.touches[0].clientY; live=true; dir=0;
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; live=true; dir=0; cx=0;
     card.style.transition='none';
   },{passive:true});
 
@@ -2304,7 +2506,7 @@ function initSwipeDeleteOnly(wrap){
     if(dir===0 && Math.abs(dx)>4) dir=dx>0?1:-1;
     if(dir!==-1) return; // only allow left swipe
     if(dx>0&&cx>=0) return;
-    cx=Math.max(MAX_L,Math.min(0,dx));
+    cx=Math.max(MAX_L,Math.min(0,cx+dx));
     card.style.transform=`translateX(${cx}px)`;
   },{passive:true});
 
@@ -2960,9 +3162,11 @@ function _buildCalGridHtml(year, month){
     if(dow === 0 && !isToday) cls += ' sun';
     if(dow === 6 && !isToday) cls += ' sat';
 
-    // 件数に関わらず、復習がある日はすべてシートを開く
+    // 件数に関わらず、復習がある日はすべてシートを開く（過去日はジャンプのみ）
     const onclick = (dateStr && hasEvent)
-      ? `onclick="openDenseSheet('${dateStr}')"`
+      ? isOverdue
+        ? `onclick="calJumpToDate('${dateStr}')"`
+        : `onclick="openDenseSheet('${dateStr}')"`
       : '';
 
     // タグ色の四角ピップ（最大4個表示、超過は +N）
@@ -2974,7 +3178,9 @@ function _buildCalGridHtml(year, month){
         ? ev.colors.map(() => '#EF4444')
         : ev.colors;
       const shown = colors.slice(0, MAX_PIPS);
-      const rest  = count - shown.length; // 表示しきれないタスク数
+      // +N は「ピップで表現しきれないタスク件数」（タスク数 - 表示ピップ数）
+      const shownPipCount = Math.min(count, shown.length);
+      const rest  = count - shownPipCount; // 表示しきれないタスク数
       const pips  = shown.map(c =>
         `<div class="cal-pip" style="background:${c}"></div>`
       ).join('');
@@ -3097,7 +3303,13 @@ function calJumpToDate(dateStr){
   if(sub)  sub.textContent = 'タップして展開';
   haptic();
 
-  // 2. 対象カードを探してスクロール（cal-wrap のmax-heightトランジション完了後に実行）
+  // 2. タグフィルター・検索クリア（対象カードがDOMに存在するよう保証）
+  const needRebuild = activeTagFilterUp !== null || searchQ !== '';
+  if(activeTagFilterUp !== null) activeTagFilterUp = null;
+  if(searchQ !== '') searchQ = '';
+  if(needRebuild) render();
+
+  // 3. 対象カードを探してスクロール（cal-wrap のmax-heightトランジション完了後に実行）
   setTimeout(() => {
     const panel = document.getElementById('p-upcoming');
     if(!panel) return;
@@ -3396,10 +3608,53 @@ function closeSheet(){
   setFabHidden(false);
 }
 
+/* ══ Pull-to-close: unified helper ════════════════════════════════════
+   bindPullToClose(moveEl, pullHandleEl, closeFn, scrollContainerEl?)
+   - drag starts only when touching the pull handle (横棒 area)
+   - moveEl follows finger visually during drag
+   - release > threshold → close; release ≤ threshold → snap back
+   - scrollEl: if provided, only activates when container is scrolled to top
+═══════════════════════════════════════════════════════════════════════ */
+function bindPullToClose(moveEl, handle, closeFn, scrollEl){
+  let sy=0, dragging=false;
+  const THRESHOLD = 72;
+
+  handle.addEventListener('touchstart', e=>{
+    if(scrollEl && scrollEl.scrollTop > 2) return;
+    sy = e.touches[0].clientY;
+    dragging = true;
+    moveEl.style.transition = 'none';
+  }, {passive:true});
+
+  function onMove(e){
+    if(!dragging) return;
+    const dy = e.touches[0].clientY - sy;
+    if(dy > 0) moveEl.style.transform = 'translateY('+dy+'px)';
+  }
+  function onEnd(e){
+    if(!dragging) return;
+    dragging = false;
+    const dy = e.changedTouches[0].clientY - sy;
+    moveEl.style.transition = '';
+    moveEl.style.transform  = '';
+    if(dy > THRESHOLD) closeFn();
+  }
+
+  // Remove any previous listeners attached by a prior call on the same element
+  if(moveEl._pullMoveHandler) document.removeEventListener('touchmove', moveEl._pullMoveHandler);
+  if(moveEl._pullEndHandler)  document.removeEventListener('touchend',  moveEl._pullEndHandler);
+  moveEl._pullMoveHandler = onMove;
+  moveEl._pullEndHandler  = onEnd;
+
+  document.addEventListener('touchmove', onMove, {passive:true});
+  document.addEventListener('touchend',  onEnd,  {passive:true});
+}
+
+// — sheet（単元を追加する）
 (function(){
-  const sh=document.getElementById('sheet'); let sy=0;
-  sh.addEventListener('touchstart',e=>{ sy=e.touches[0].clientY; },{passive:true});
-  sh.addEventListener('touchend',e=>{ if(e.changedTouches[0].clientY-sy>70) closeSheet(); },{passive:true});
+  const sh = document.getElementById('sheet');
+  const pull = sh.querySelector('.sheet-pull');
+  bindPullToClose(sh, pull, closeSheet);
 })();
 
 if(window.visualViewport){
@@ -4100,13 +4355,45 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
 <!-- Import file picker (hidden) -->
 <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">
 
-<!-- Swipe-to-close for backup-sheet (bound here so DOM is ready) -->
+<!-- Swipe-to-close for all bottom sheets (bound here so DOM is ready) -->
 <script>
 (function(){
-  const sh = document.getElementById('backup-sheet');
-  let sy = 0;
-  sh.addEventListener('touchstart', e => { sy = e.touches[0].clientY; }, {passive:true});
-  sh.addEventListener('touchend',   e => { if(e.changedTouches[0].clientY - sy > 70) closeBackupSheet(); }, {passive:true});
+  // edit-modal-box（単元名を編集）
+  // moveEl = .edit-modal-box (これ自体が translateY で動く)
+  const editBox = document.querySelector('.edit-modal-box');
+  if(editBox){
+    const p = editBox.querySelector('.edit-modal-pull');
+    if(p) bindPullToClose(editBox, p, closeEdit);
+  }
+
+  // snooze-pick-box（延期）
+  const snoozeBox = document.querySelector('.snooze-pick-box');
+  if(snoozeBox){
+    const p = snoozeBox.querySelector('.snooze-pick-pull');
+    if(p) bindPullToClose(snoozeBox, p, closeSnooze);
+  }
+
+  // dense-sheet（過密日シート）— scrollEl を渡してスクロール中は無効化
+  const denseSheet = document.getElementById('dense-sheet');
+  if(denseSheet){
+    const p = denseSheet.querySelector('.dense-sheet-pull');
+    const sc = document.getElementById('dense-sheet-scroll');
+    if(p) bindPullToClose(denseSheet, p, closeDenseSheet, sc);
+  }
+
+  // tag-mgr-sheet（タグを管理）
+  const tagSheet = document.getElementById('tag-mgr-sheet');
+  if(tagSheet){
+    const p = tagSheet.querySelector('.sheet-pull');
+    if(p) bindPullToClose(tagSheet, p, closeTagMgr);
+  }
+
+  // backup-sheet（データの保存・読み込み）
+  const backupSheet = document.getElementById('backup-sheet');
+  if(backupSheet){
+    const p = backupSheet.querySelector('.sheet-pull');
+    if(p) bindPullToClose(backupSheet, p, closeBackupSheet);
+  }
 })();
 </script>
 
@@ -4121,5 +4408,429 @@ self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWi
     </div>
   </div>
 </div>
+<!-- ══ Onboarding coach marks ═══════════════════════════════════════ -->
+<!-- SVG cutout dimmer for spotlight -->
+<svg id="ob-svg-mask" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="ob-cutout-mask">
+      <rect width="100%" height="100%" fill="white"/>
+      <rect id="ob-cutout-rect" x="0" y="0" width="0" height="0" rx="16" ry="16" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="100%" height="100%" fill="rgba(0,0,0,0.58)" mask="url(#ob-cutout-mask)"/>
+</svg>
+<div class="ob-spotlight" id="ob-spotlight"></div>
+<div class="ob-overlay" id="ob-overlay"></div>
+<div class="ob-bubble" id="ob-bubble"></div>
+
+<!-- ══ PWA Install sheet ═════════════════════════════════════════════ -->
+<div class="pwa-overlay" id="pwa-overlay" onclick="closePwaSheet()"></div>
+<div class="pwa-sheet" id="pwa-sheet"></div>
+
+<script>
+/* ════════════════════════════════════════════
+   ONBOARDING & PWA INSTALL PROMPT
+════════════════════════════════════════════ */
+const OB_KEY = 'fukushu-onboarded-v1';
+const PWA_SHOWN_KEY = 'fukushu-pwa-prompted-v1';
+
+function _isStandalone(){
+  return navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+}
+function _isIOS(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+function _isAndroid(){
+  return /android/i.test(navigator.userAgent);
+}
+
+/* ── PWA install sheet ── */
+function openPwaSheet(){
+  const ios = _isIOS();
+  const sheet = document.getElementById('pwa-sheet');
+  sheet.innerHTML = `
+    <div class="pwa-pull" id="pwa-pull"></div>
+    <div class="pwa-head">
+      <div class="pwa-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </div>
+      <div class="pwa-head-txt">
+        <div class="pwa-head-ttl">ホーム画面に追加する</div>
+        <div class="pwa-head-sub">アプリとして快適に使えます 🚀</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--lbl3);margin-bottom:8px">🍎 iPhone / iPad（Safari）</div>
+      <div class="pwa-steps">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div class="pwa-step-txt">
+            <div class="pwa-step-ttl">共有ボタンをタップ</div>
+            <div class="pwa-step-sub">Safari 下部（または上部）の <em>□↑</em> ボタンをタップ</div>
+          </div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div class="pwa-step-txt">
+            <div class="pwa-step-ttl">「ホーム画面に追加」を選ぶ</div>
+            <div class="pwa-step-sub">メニューをスクロールして <em>「ホーム画面に追加」</em> をタップ</div>
+          </div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">3</div>
+          <div class="pwa-step-txt">
+            <div class="pwa-step-ttl">「追加」をタップして完了</div>
+            <div class="pwa-step-sub">右上の <em>「追加」</em> をタップすれば完了です</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--lbl3);margin-bottom:8px">🤖 Android（Chrome）</div>
+      <div class="pwa-steps">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div class="pwa-step-txt">
+            <div class="pwa-step-ttl">メニューを開く</div>
+            <div class="pwa-step-sub">Chrome 右上の <em>⋮</em> ボタンをタップ</div>
+          </div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div class="pwa-step-txt">
+            <div class="pwa-step-ttl">「ホーム画面に追加」を選ぶ</div>
+            <div class="pwa-step-sub"><em>「ホーム画面に追加」</em> または <em>「アプリをインストール」</em> をタップ<br>画面上部にバナーが出ることもあります</div>
+          </div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">3</div>
+          <div class="pwa-step-txt">
+            <div class="pwa-step-ttl">「追加」をタップして完了</div>
+            <div class="pwa-step-sub">確認ダイアログで <em>「追加」</em> をタップすれば完了です</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="pwa-dismiss" onclick="closePwaSheet()">あとで追加する</button>
+  `;
+  document.getElementById('pwa-overlay').classList.add('on');
+  sheet.classList.add('on');
+
+  // swipe to close
+  const pull = document.getElementById('pwa-pull');
+  if(pull) bindPullToClose(sheet, pull, closePwaSheet);
+}
+function closePwaSheet(){
+  document.getElementById('pwa-overlay').classList.remove('on');
+  document.getElementById('pwa-sheet').classList.remove('on');
+  try{ localStorage.setItem(PWA_SHOWN_KEY,'1'); }catch(_){}
+}
+
+/* ── Coach mark steps ── */
+const OB_STEPS = [
+  // step 0: welcome + PWA prompt (special, full bubble, no spotlight)
+  {
+    type: 'welcome',
+    emoji: '👋',
+    title: 'ようこそ！復習マネージャーへ',
+    body: '<strong>エビングハウスの忘却曲線</strong>に基づき、最適なタイミングで復習をお知らせします。<br><br>まず簡単な使い方を説明します。',
+    next: '使い方を見る',
+    skip: 'スキップ',
+  },
+  // step 1: FAB (add button)
+  {
+    type: 'spot',
+    target: '.float-fab',
+    arrowDir: 'down',
+    emoji: '➕',
+    title: '単元を追加する',
+    body: 'このボタンをタップして、勉強した単元を登録します。<br>単元名と学習日を入力するだけで、<strong>復習スケジュールが自動で組まれます</strong>。',
+    next: '次へ',
+    skip: 'スキップ',
+  },
+  // step 2: today tab
+  {
+    type: 'spot',
+    target: '[data-tab="today"]',
+    arrowDir: 'up',
+    emoji: '📅',
+    title: '「今日」タブ',
+    body: '今日復習すべき単元が表示されます。<br>カードの <strong>「完了にする」</strong> を押すと次の復習日が自動でセットされます。',
+    next: '次へ',
+    skip: 'スキップ',
+  },
+  // step 3: upcoming tab
+  {
+    type: 'spot',
+    target: '[data-tab="upcoming"]',
+    arrowDir: 'up',
+    emoji: '🗓️',
+    title: '「予定」タブ',
+    body: '今後の復習スケジュールをカレンダーで確認できます。<br><strong>忘れる前に復習できる</strong>よう、日程が組まれています。',
+    next: '次へ',
+    skip: 'スキップ',
+  },
+  // step 4: settings tab
+  {
+    type: 'spot',
+    target: '[data-tab="settings"]',
+    arrowDir: 'up',
+    emoji: '🔔',
+    title: '通知設定',
+    body: '「設定」タブで<strong>毎朝のリマインダー通知</strong>をオンにできます。<br>通知をオンにすると、復習忘れを防げます。',
+    next: '次へ',
+    skip: 'スキップ',
+  },
+  // step 5: PWA recommendation
+  {
+    type: 'pwa',
+    emoji: '📲',
+    title: 'ホーム画面に追加しよう',
+    body: 'ブラウザのまま使うより、<strong>ホーム画面に追加</strong>するとアプリのように快適に使えます。<br>通知機能もホーム画面追加後に有効になります。',
+    next: '追加方法を見る',
+    skip: 'あとで',
+  },
+];
+
+let _obStep = 0;
+let _obActive = false;
+
+function startOnboarding(){
+  _obStep = 0;
+  _obActive = true;
+  document.getElementById('ob-overlay').classList.add('on');
+  _showObStep(_obStep);
+}
+
+function _showObStep(idx){
+  const step = OB_STEPS[idx];
+  const bubble = document.getElementById('ob-bubble');
+  const spotlight = document.getElementById('ob-spotlight');
+  const total = OB_STEPS.length;
+
+  // Dots HTML
+  const dotsHtml = OB_STEPS.map((_,i)=>`<div class="ob-dot${i<idx?' done':i===idx?' active':''}"></div>`).join('');
+
+  bubble.className = 'ob-bubble';
+
+  if(step.type === 'welcome' || step.type === 'pwa'){
+    // Full-screen centered bubble (no spotlight)
+    spotlight.classList.remove('on');
+    const svgMaskW = document.getElementById('ob-svg-mask');
+    if(svgMaskW){
+      // Full dim with no cutout for welcome/pwa screens
+      svgMaskW.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+      const cr = document.getElementById('ob-cutout-rect');
+      if(cr){ cr.setAttribute('width','0'); cr.setAttribute('height','0'); }
+      svgMaskW.classList.add('on');
+    }
+    document.getElementById('ob-overlay').style.pointerEvents = 'none';
+
+    bubble.innerHTML = `
+      <div class="ob-dots">${dotsHtml}</div>
+      <span class="ob-emoji">${step.emoji}</span>
+      <div class="ob-ttl">${step.title}</div>
+      <div class="ob-body">${step.body}</div>
+      <div class="ob-actions">
+        <button class="ob-skip" onclick="skipOnboarding()">${step.skip}</button>
+        <button class="ob-next" onclick="obNext()">${step.next}</button>
+      </div>
+    `;
+    // Center in screen
+    bubble.style.cssText = '';
+    bubble.style.left = '50%';
+    bubble.style.top = '50%';
+    bubble.style.transform = 'translate(-50%, -50%)';
+    bubble.style.opacity = '0';
+    bubble.classList.add('on');
+    requestAnimationFrame(()=>{
+      bubble.style.opacity = '1';
+      bubble.style.transform = 'translate(-50%, -50%) translateY(0)';
+    });
+    setTimeout(()=>bubble.classList.add('on'), 10);
+
+  } else {
+    // Spotlight mode
+    const targetEl = document.querySelector(step.target);
+    if(!targetEl){ obNext(); return; }
+
+    // FABが hidden クラスで非表示の場合、getBoundingClientRect() の前に除去する
+    // （hidden状態だと transform:scale(.8) で座標がずれるため）
+    if(targetEl.classList.contains('float-fab') && targetEl.classList.contains('hidden')){
+      targetEl.classList.remove('hidden');
+      targetEl.dataset.obHidden = '1';
+      targetEl.style.pointerEvents = 'none'; // ガイド中はタップ不可
+      // スタイル反映を待つため1フレーム後にrect取得・描画
+      requestAnimationFrame(() => _positionSpotlight(targetEl, step, bubble, spotlight, dotsHtml));
+      return;
+    }
+
+    _positionSpotlight(targetEl, step, bubble, spotlight, dotsHtml);
+  }
+}
+
+function _positionSpotlight(targetEl, step, bubble, spotlight, dotsHtml){
+    const rect = targetEl.getBoundingClientRect();
+    const pad = 10;
+    const sl = spotlight;
+    sl.style.left   = (rect.left - pad) + 'px';
+    sl.style.top    = (rect.top  - pad) + 'px';
+    sl.style.width  = (rect.width  + pad*2) + 'px';
+    sl.style.height = (rect.height + pad*2) + 'px';
+    sl.classList.add('on');
+
+    // Update SVG cutout
+    const svgMask = document.getElementById('ob-svg-mask');
+    const cutoutRect = document.getElementById('ob-cutout-rect');
+    if(svgMask && cutoutRect){
+      svgMask.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+      cutoutRect.setAttribute('x', rect.left - pad);
+      cutoutRect.setAttribute('y', rect.top - pad);
+      cutoutRect.setAttribute('width', rect.width + pad*2);
+      cutoutRect.setAttribute('height', rect.height + pad*2);
+      svgMask.classList.add('on');
+    }
+
+    document.getElementById('ob-overlay').style.pointerEvents = 'none';
+    // allow tapping spotlight target
+    // FABはposition:fixedのため、position:relativeに変更すると通常フローに戻り消えてしまう。
+    // float-fabの場合はpositionを変更せず、z-indexのみ設定する。
+    if(targetEl.classList.contains('float-fab')){
+      targetEl.style.zIndex = '9002';
+      targetEl.style.pointerEvents = 'none'; // ガイド中はタップ不可
+    } else {
+      targetEl.style.position = 'relative';
+      targetEl.style.zIndex   = '9002';
+    }
+
+    // Position bubble — auto-detect above/below based on available space
+    bubble.style.cssText = '';
+    const bubbleW = Math.min(320, window.innerWidth - 40);
+    const bubbleEstH = 260; // estimated bubble height
+
+    let bubbleLeft = rect.left + rect.width/2 - bubbleW/2;
+    bubbleLeft = Math.max(20, Math.min(bubbleLeft, window.innerWidth - bubbleW - 20));
+
+    // Decide: place above if there's not enough room below, else place below
+    const spaceBelow = window.innerHeight - rect.bottom - pad - 16;
+    const spaceAbove = rect.top - pad - 16;
+    const placeAbove = spaceBelow < bubbleEstH && spaceAbove > spaceBelow;
+
+    let bubbleTop;
+    if(placeAbove){
+      bubble.classList.add('arrow-down');
+      // position so bottom of bubble sits pad+16 above target
+      bubbleTop = rect.top - pad - 16 - bubbleEstH;
+      bubbleTop = Math.max(60, bubbleTop);
+    } else {
+      bubble.classList.add('arrow-up');
+      bubbleTop = rect.bottom + pad + 16;
+      // if still out of screen, clamp upward
+      if(bubbleTop + bubbleEstH > window.innerHeight - 20){
+        bubbleTop = window.innerHeight - bubbleEstH - 20;
+      }
+      bubbleTop = Math.max(60, bubbleTop);
+    }
+
+    bubble.style.left = bubbleLeft + 'px';
+    bubble.style.top  = bubbleTop + 'px';
+    bubble.style.width = bubbleW + 'px';
+    bubble.style.transform = 'translateY(8px)';
+    bubble.style.opacity = '0';
+    // Arrow points at center of target
+    const targetCenterX = rect.left + rect.width / 2;
+    const arrowLeft = Math.max(20, Math.min(targetCenterX - bubbleLeft, bubbleW - 20));
+    bubble.style.setProperty('--ob-arrow-left', arrowLeft + 'px');
+
+    bubble.innerHTML = `
+      <div class="ob-dots">${dotsHtml}</div>
+      <span class="ob-emoji">${step.emoji}</span>
+      <div class="ob-ttl">${step.title}</div>
+      <div class="ob-body">${step.body}</div>
+      <div class="ob-actions">
+        <button class="ob-skip" onclick="skipOnboarding()">${step.skip}</button>
+        <button class="ob-next" onclick="obNext()">${step.next}</button>
+      </div>
+    `;
+    bubble.classList.add('on');
+    requestAnimationFrame(()=>{
+      bubble.style.opacity = '1';
+      bubble.style.transform = 'translateY(0)';
+    });
+}
+
+function _clearObSpotlight(){
+  // Remove z-index from all potential spotlight targets
+  OB_STEPS.forEach(s=>{
+    if(s.target){
+      const el = document.querySelector(s.target);
+      if(el){
+        // FABはposition:fixedのため、positionをリセットすると通常フローに戻り消えてしまう。
+        // float-fabの場合はpositionを変更せず、z-indexのみリセットする。
+        if(el.classList.contains('float-fab')){
+          el.style.zIndex = '';
+          el.style.pointerEvents = '';
+          // オンボーディング開始前にhiddenだった場合のみhiddenに戻す
+          if(el.dataset.obHidden){ el.classList.add('hidden'); delete el.dataset.obHidden; }
+        } else {
+          el.style.position = ''; el.style.zIndex = '';
+          if(el.dataset.obHidden){ el.style.pointerEvents = ''; el.classList.add('hidden'); delete el.dataset.obHidden; }
+        }
+      }
+    }
+  });
+  document.getElementById('ob-spotlight').classList.remove('on');
+  const svgMask = document.getElementById('ob-svg-mask');
+  if(svgMask) svgMask.classList.remove('on');
+}
+
+function obNext(){
+  const step = OB_STEPS[_obStep];
+
+  // If this was the PWA step, open the PWA sheet
+  if(step.type === 'pwa'){
+    _finishOnboarding();
+    openPwaSheet();
+    return;
+  }
+
+  _obStep++;
+  if(_obStep >= OB_STEPS.length){
+    _finishOnboarding();
+    return;
+  }
+  _clearObSpotlight();
+
+  const bubble = document.getElementById('ob-bubble');
+  bubble.style.opacity = '0';
+  bubble.style.transform = bubble.style.transform.includes('-50%')
+    ? 'translate(-50%, -50%) translateY(-6px)'
+    : 'translateY(-6px)';
+  setTimeout(()=>_showObStep(_obStep), 200);
+}
+
+function skipOnboarding(){
+  _finishOnboarding();
+}
+
+function _finishOnboarding(){
+  _obActive = false;
+  _clearObSpotlight();
+  const bubble = document.getElementById('ob-bubble');
+  bubble.classList.remove('on');
+  bubble.style.opacity = '0';
+  document.getElementById('ob-overlay').classList.remove('on');
+  try{ localStorage.setItem(OB_KEY,'1'); }catch(_){}
+}
+
+/* ── Auto-start on first visit ── */
+(function(){
+  const done = (()=>{ try{ return localStorage.getItem(OB_KEY); }catch(_){ return null; } })();
+  if(!done && !_isStandalone()){
+    // Delay slightly so app renders first
+    setTimeout(startOnboarding, 600);
+  }
+})();
+</script>
 </body>
-</html>
